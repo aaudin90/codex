@@ -1246,6 +1246,11 @@ impl App {
                         .await;
                 }
             }
+            AppEvent::UpdatePlanModeModel(model) => {
+                self.on_update_plan_mode_model(model);
+                self.sync_active_thread_plan_mode_reasoning_setting(app_server)
+                    .await;
+            }
             AppEvent::UpdatePersonality(personality) => {
                 self.on_update_personality(personality);
                 self.sync_active_thread_personality_setting(app_server, personality)
@@ -2146,6 +2151,27 @@ impl App {
                     self.chat_widget.add_error_message(format!(
                         "Failed to save Plan mode reasoning effort: {err}"
                     ));
+                }
+            }
+            AppEvent::PersistPlanModeModel(model) => {
+                let edit = model.map_or_else(
+                    || crate::config_update::clear_config_value("plan_mode_model"),
+                    |model| {
+                        crate::config_update::replace_config_value(
+                            "plan_mode_model",
+                            serde_json::json!(model),
+                        )
+                    },
+                );
+                if let Err(err) = crate::config_update::write_config_batch(
+                    app_server.request_handle(),
+                    vec![edit],
+                )
+                .await
+                {
+                    tracing::error!(error = %err, "failed to persist plan mode model");
+                    self.chat_widget
+                        .add_error_message(format!("Failed to save Plan mode model: {err}"));
                 }
             }
             AppEvent::PersistModelMigrationPromptAcknowledged {

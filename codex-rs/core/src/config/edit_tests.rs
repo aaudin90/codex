@@ -397,6 +397,71 @@ submit = "shift-enter"
 }
 
 #[test]
+fn set_and_clear_plan_mode_model_root_path() {
+    let tmp = tempdir().expect("tmpdir");
+    let codex_home = tmp.path();
+
+    ConfigEditsBuilder::new(codex_home)
+        .with_edits([ConfigEdit::SetPath {
+            segments: vec!["plan_mode_model".to_string()],
+            value: value("gpt-5.2"),
+        }])
+        .apply_blocking()
+        .expect("persist");
+
+    let contents = std::fs::read_to_string(codex_home.join(CONFIG_TOML_FILE)).expect("read config");
+    assert_eq!(contents, "plan_mode_model = \"gpt-5.2\"\n");
+
+    ConfigEditsBuilder::new(codex_home)
+        .with_edits([ConfigEdit::ClearPath {
+            segments: vec!["plan_mode_model".to_string()],
+        }])
+        .apply_blocking()
+        .expect("clear");
+
+    let contents = std::fs::read_to_string(codex_home.join(CONFIG_TOML_FILE)).expect("read config");
+    assert_eq!(contents, "");
+}
+
+#[test]
+fn set_and_clear_plan_mode_model_profile_path() {
+    let tmp = tempdir().expect("tmpdir");
+    let codex_home = tmp.path();
+
+    ConfigEditsBuilder::new(codex_home)
+        .with_edits([ConfigEdit::SetPath {
+            segments: vec![
+                "profiles".to_string(),
+                "team".to_string(),
+                "plan_mode_model".to_string(),
+            ],
+            value: value("gpt-5.2"),
+        }])
+        .apply_blocking()
+        .expect("persist");
+
+    let contents = std::fs::read_to_string(codex_home.join(CONFIG_TOML_FILE)).expect("read config");
+    let expected = r#"[profiles.team]
+plan_mode_model = "gpt-5.2"
+"#;
+    assert_eq!(contents, expected);
+
+    ConfigEditsBuilder::new(codex_home)
+        .with_edits([ConfigEdit::ClearPath {
+            segments: vec![
+                "profiles".to_string(),
+                "team".to_string(),
+                "plan_mode_model".to_string(),
+            ],
+        }])
+        .apply_blocking()
+        .expect("clear");
+
+    let contents = std::fs::read_to_string(codex_home.join(CONFIG_TOML_FILE)).expect("read config");
+    assert_eq!(contents, "[profiles.team]\n");
+}
+
+#[test]
 fn set_model_availability_nux_count_writes_shown_count() {
     let tmp = tempdir().expect("tmpdir");
     let codex_home = tmp.path();

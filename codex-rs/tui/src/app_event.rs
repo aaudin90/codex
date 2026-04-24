@@ -819,6 +819,9 @@ pub(crate) enum AppEvent {
     /// Update the current model slug in the running app and widget.
     UpdateModel(String),
 
+    /// Update the Plan-mode model override in the running app and widget.
+    UpdatePlanModeModel(Option<String>),
+
     /// Update the current personality in the running app and widget.
     UpdatePersonality(Personality),
 
@@ -832,6 +835,9 @@ pub(crate) enum AppEvent {
         model: String,
         effort: Option<ReasoningEffort>,
     },
+
+    /// Persist the selected Plan-mode model override.
+    PersistPlanModeModel(Option<String>),
 
     /// Show the cyber auto-review notice after the model selection confirmation.
     CyberModelAutoReviewNotice,
