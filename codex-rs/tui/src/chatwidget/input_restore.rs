@@ -382,6 +382,9 @@ impl ChatWidget {
         if let Some(input_state) = input_state {
             self.current_collaboration_mode = input_state.current_collaboration_mode;
             self.active_collaboration_mask = input_state.active_collaboration_mask;
+            if let Some(mask) = self.active_collaboration_mask.as_mut() {
+                self.apply_plan_mode_overrides(mask);
+            }
             self.safety_buffering_prompt = input_state.safety_buffering_prompt;
             self.turn_lifecycle.restore_running(
                 preserve_in_flight_turn && input_state.agent_turn_running,
