@@ -793,6 +793,11 @@ impl App {
         }
     }
 
+    pub(super) fn on_update_plan_mode_model(&mut self, model: Option<String>) {
+        self.config.plan_mode_model = model.clone();
+        self.chat_widget.set_plan_mode_model(model);
+    }
+
     pub(super) fn on_apply_advanced_reasoning(
         &mut self,
         model: &str,
