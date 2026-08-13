@@ -5,17 +5,17 @@ description: Safely rebase the current non-main feature branch onto origin/main 
 
 # Rebase Plan Mode
 
-Safely move the current feature branch onto the latest `origin/main`. Preserve both Plan mode choices: model and reasoning effort.
+Safely move the current feature branch onto the latest `origin/main` or an explicitly selected upstream release commit. Preserve both Plan mode choices: model and reasoning effort.
 
 ## Preconditions
 
-1. Run `git status --short`, `git branch --show-current`, and `git fetch origin main`.
+1. Run `git status --short` and `git branch --show-current`.
 2. Stop if the worktree is not clean, the branch is detached, or it is `main`. Do not stash changes and never rebase or force-push `main`.
-3. Confirm the fetched `origin/main` is the rebase base. Do not use a stale local `main`.
+3. By default, run `git fetch origin main` and use fetched `origin/main` as the rebase base. For a fork release explicitly targeting an upstream version, obtain its exact `rust-v<version>` commit without adding a permanent remote and use that commit instead.
 
 ## Rebase and resolve conflicts
 
-1. Run `git rebase origin/main`.
+1. For the default base, run `git rebase origin/main`. For an explicitly chosen release commit, run `git rebase --onto <release-commit> origin/main` so the feature-only commits move from the current main base to that release commit.
 2. For every conflict, inspect the base, upstream, and branch changes before editing. Do not resolve an entire file with `git checkout --ours`, `git checkout --theirs`, or equivalent bulk replacement.
 3. Keep upstream behavior and the complete Plan mode feature. In particular, verify all of these remain connected:
 
