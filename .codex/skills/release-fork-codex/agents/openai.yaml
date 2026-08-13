@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Codex Fork"
+  short_description: "Publish a macOS ARM64 fork release from HEAD"
+  default_prompt: "Use $release-fork-codex to validate and publish a fork release for upstream Codex version X.Y.Z from the current HEAD."
