@@ -154,7 +154,10 @@ def binary_path(root: Path) -> Path:
 def build_artifacts(root: Path, version: str) -> tuple[Path, Path, tempfile.TemporaryDirectory[str]]:
     if sys.platform != "darwin" or platform.machine() not in {"arm64", "aarch64"}:
         raise CommandFailed("publishing a fork release requires a macOS ARM64 host")
-    run(["cargo", "build", "--release", "-p", "codex-cli", "--bin", "codex"], cwd=root / "codex-rs")
+    run(
+        ["cargo", "build", "--locked", "--release", "-p", "codex-cli", "--bin", "codex"],
+        cwd=root / "codex-rs",
+    )
     binary = binary_path(root)
     if not binary.is_file():
         raise CommandFailed(f"built binary is missing: {binary}")
@@ -210,7 +213,6 @@ def main() -> int:
             f"codex-rs/Cargo.toml version is {workspace_version(root)}, expected {args.version}; create the version bump first"
         )
     ensure_clean(root)
-    ensure_ancestor("origin/main", root, "origin/main")
     ensure_github_access(root)
     upstream_tag = f"rust-v{args.version}"
     upstream_commit = exact_upstream_commit(root, upstream_tag)
