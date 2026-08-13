@@ -134,14 +134,18 @@ impl ChatWidget {
             .unwrap_or(false)
     }
 
-    fn apply_plan_mode_overrides(&self, mask: &mut CollaborationModeMask) {
+    pub(super) fn apply_plan_mode_overrides(
+        mask: &mut CollaborationModeMask,
+        model: Option<&str>,
+        effort: Option<ReasoningEffortConfig>,
+    ) {
         if mask.mode != Some(ModeKind::Plan) {
             return;
         }
-        if let Some(model) = self.config.plan_mode_model.clone() {
-            mask.model = Some(model);
+        if let Some(model) = model {
+            mask.model = Some(model.to_string());
         }
-        if let Some(effort) = self.config.plan_mode_reasoning_effort.clone() {
+        if let Some(effort) = effort {
             mask.reasoning_effort = Some(Some(effort));
         }
     }
@@ -149,6 +153,8 @@ impl ChatWidget {
     /// Override the model used when Plan mode is active.
     pub(crate) fn set_plan_mode_model(&mut self, model: Option<String>) {
         self.config.plan_mode_model = model;
+        let plan_mode_model = self.config.plan_mode_model.clone();
+        let plan_mode_effort = self.config.plan_mode_reasoning_effort.clone();
         if self.collaboration_modes_enabled()
             && let Some(mask) = self.active_collaboration_mask.as_mut()
             && mask.mode == Some(ModeKind::Plan)
@@ -156,7 +162,7 @@ impl ChatWidget {
             if let Some(plan_mask) = collaboration_modes::plan_mask(self.model_catalog.as_ref()) {
                 *mask = plan_mask;
             }
-            self.apply_plan_mode_overrides(mask);
+            Self::apply_plan_mode_overrides(mask, plan_mode_model.as_deref(), plan_mode_effort);
         }
         self.refresh_model_dependent_surfaces();
     }
@@ -168,6 +174,8 @@ impl ChatWidget {
     /// Passing `None` resets to the Plan-mode preset default.
     pub(crate) fn set_plan_mode_reasoning_effort(&mut self, effort: Option<ReasoningEffortConfig>) {
         self.config.plan_mode_reasoning_effort = effort.clone();
+        let plan_mode_model = self.config.plan_mode_model.clone();
+        let plan_mode_effort = self.config.plan_mode_reasoning_effort.clone();
         if self.collaboration_modes_enabled()
             && let Some(mask) = self.active_collaboration_mask.as_mut()
             && mask.mode == Some(ModeKind::Plan)
@@ -175,7 +183,7 @@ impl ChatWidget {
             if let Some(plan_mask) = collaboration_modes::plan_mask(self.model_catalog.as_ref()) {
                 *mask = plan_mask;
             }
-            self.apply_plan_mode_overrides(mask);
+            Self::apply_plan_mode_overrides(mask, plan_mode_model.as_deref(), plan_mode_effort);
         }
         self.refresh_model_dependent_surfaces();
     }
@@ -283,11 +291,13 @@ impl ChatWidget {
             /*effort*/ None,
             /*developer_instructions*/ None,
         );
+        let plan_mode_model = self.config.plan_mode_model.clone();
+        let plan_mode_effort = self.config.plan_mode_reasoning_effort.clone();
         if self.collaboration_modes_enabled()
             && let Some(mask) = self.active_collaboration_mask.as_mut()
         {
             if mask.mode == Some(ModeKind::Plan) {
-                self.apply_plan_mode_overrides(mask);
+                Self::apply_plan_mode_overrides(mask, plan_mode_model.as_deref(), plan_mode_effort);
             } else {
                 mask.model = Some(model.to_string());
             }
@@ -720,7 +730,11 @@ impl ChatWidget {
         let previous_mode = self.active_mode_kind();
         let previous_model = self.current_model().to_string();
         let previous_effort = self.effective_reasoning_effort();
-        self.apply_plan_mode_overrides(&mut mask);
+        Self::apply_plan_mode_overrides(
+            &mut mask,
+            self.config.plan_mode_model.as_deref(),
+            self.config.plan_mode_reasoning_effort.clone(),
+        );
         if mask.mode == Some(ModeKind::Plan) {
             self.dismissed_plan_mode_nudge_scopes
                 .insert(self.plan_mode_nudge_scope());
