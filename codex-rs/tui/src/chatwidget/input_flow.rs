@@ -273,7 +273,11 @@ impl ChatWidget {
             });
             return;
         }
-        self.apply_plan_mode_overrides(&mut collaboration_mode);
+        Self::apply_plan_mode_overrides(
+            &mut collaboration_mode,
+            self.config.plan_mode_model.as_deref(),
+            self.config.plan_mode_reasoning_effort.clone(),
+        );
         if self.turn_lifecycle.agent_turn_running
             && self.active_collaboration_mask.as_ref() != Some(&collaboration_mode)
         {
