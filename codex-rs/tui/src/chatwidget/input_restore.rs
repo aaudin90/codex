@@ -488,8 +488,10 @@ impl ChatWidget {
         if let Some(input_state) = input_state {
             self.current_collaboration_mode = input_state.current_collaboration_mode;
             self.active_collaboration_mask = input_state.active_collaboration_mask;
+            let plan_mode_model = self.config.plan_mode_model.clone();
+            let plan_mode_effort = self.config.plan_mode_reasoning_effort.clone();
             if let Some(mask) = self.active_collaboration_mask.as_mut() {
-                self.apply_plan_mode_overrides(mask);
+                Self::apply_plan_mode_overrides(mask, plan_mode_model.as_deref(), plan_mode_effort);
             }
             self.safety_buffering_prompt = input_state.safety_buffering_prompt;
             self.turn_lifecycle.restore_running(
