@@ -1084,7 +1084,12 @@ async fn restored_plan_mask_uses_configured_model_for_composer_submission() {
         .expect("thread input state");
     chat.active_collaboration_mask = None;
 
-    chat.restore_thread_input_state(Some(input_state));
+    chat.restore_thread_input_state(
+        Some(input_state),
+        ThreadInputStateRestoreMode {
+            preserve_in_flight_turn: false,
+        },
+    );
     assert_eq!(chat.current_model(), "gpt-5.2");
 
     chat.bottom_pane
