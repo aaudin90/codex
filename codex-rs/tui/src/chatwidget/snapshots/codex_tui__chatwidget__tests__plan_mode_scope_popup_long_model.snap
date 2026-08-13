@@ -1,0 +1,27 @@
+---
+source: tui/src/chatwidget/tests/plan_mode.rs
+expression: "render_bottom_popup(&chat, 48)"
+---
+  Apply model settings
+  Choose where to apply high reasoning.
+
+› 1. Apply to Plan mode overri… Always use
+                                gpt-5.4-long-
+                                plan-mode-
+                                model-slug
+                                with high
+                                reasoning in
+                                Plan mode.
+  2. Apply to global default a… Set the global
+                                default
+                                reasoning
+                                level and the
+                                Plan mode
+                                override. This
+                                replaces the
+                                current built-
+                                in Plan
+                                default
+                                (medium).
+
+  Press enter to confirm or esc to go back
