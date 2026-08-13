@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rebase Plan Mode"
+  short_description: "Safely rebase Plan mode work onto origin/main"
+  default_prompt: "Use $rebase-plan-mode to safely rebase this feature branch onto origin/main while preserving Plan mode model and effort overrides."
