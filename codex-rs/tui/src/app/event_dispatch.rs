@@ -2129,20 +2129,15 @@ impl App {
                 }
             }
             AppEvent::PersistPlanModeReasoningEffort(effort) => {
-                let key_path = "plan_mode_reasoning_effort";
-                let edit = if let Some(effort) = effort {
-                    crate::config_update::replace_config_value(
-                        key_path,
-                        serde_json::json!(effort.to_string()),
-                    )
-                } else {
-                    crate::config_update::clear_config_value(key_path)
-                };
-                if let Err(err) = crate::config_update::write_config_batch(
-                    app_server.request_handle(),
-                    vec![edit],
-                )
-                .await
+                let profile = self.active_profile.as_deref();
+                let edit = self.plan_mode_override_edit(
+                    "plan_mode_reasoning_effort",
+                    effort.map(|effort| effort.to_string()),
+                );
+                if let Err(err) = ConfigEditsBuilder::new(&self.config.codex_home)
+                    .with_edits([edit])
+                    .apply()
+                    .await
                 {
                     tracing::error!(
                         error = %err,
@@ -2154,24 +2149,22 @@ impl App {
                 }
             }
             AppEvent::PersistPlanModeModel(model) => {
-                let edit = model.map_or_else(
-                    || crate::config_update::clear_config_value("plan_mode_model"),
-                    |model| {
-                        crate::config_update::replace_config_value(
-                            "plan_mode_model",
-                            serde_json::json!(model),
-                        )
-                    },
-                );
-                if let Err(err) = crate::config_update::write_config_batch(
-                    app_server.request_handle(),
-                    vec![edit],
-                )
-                .await
+                let profile = self.active_profile.as_deref();
+                let edit = self.plan_mode_override_edit("plan_mode_model", model);
+                if let Err(err) = ConfigEditsBuilder::new(&self.config.codex_home)
+                    .with_edits([edit])
+                    .apply()
+                    .await
                 {
                     tracing::error!(error = %err, "failed to persist plan mode model");
-                    self.chat_widget
-                        .add_error_message(format!("Failed to save Plan mode model: {err}"));
+                    if let Some(profile) = profile {
+                        self.chat_widget.add_error_message(format!(
+                            "Failed to save Plan mode model for profile `{profile}`: {err}"
+                        ));
+                    } else {
+                        self.chat_widget
+                            .add_error_message(format!("Failed to save Plan mode model: {err}"));
+                    }
                 }
             }
             AppEvent::PersistModelMigrationPromptAcknowledged {
