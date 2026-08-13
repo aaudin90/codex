@@ -5,6 +5,7 @@
 //! loop.
 
 use super::*;
+use crate::legacy_core::config::edit::ConfigEdit;
 use codex_config::ConfigLayerSource;
 #[cfg(target_os = "windows")]
 use codex_utils_approval_presets::ApprovalPreset;
@@ -53,12 +54,8 @@ pub(super) fn resume_model_settings_for_overrides(
 }
 
 impl App {
-    pub(super) fn plan_mode_override_edit(&self, key: &str, value: Option<String>) -> ConfigEdit {
-        let mut segments = Vec::new();
-        if let Some(profile) = self.active_profile.as_deref() {
-            segments.extend(["profiles".to_string(), profile.to_string()]);
-        }
-        segments.push(key.to_string());
+    pub(super) fn plan_mode_override_edit(key: &str, value: Option<String>) -> ConfigEdit {
+        let segments = vec![key.to_string()];
         match value {
             Some(value) => ConfigEdit::SetPath {
                 segments,
@@ -1568,9 +1565,10 @@ enabled = false
         app.config.codex_home = codex_home.path().to_path_buf().abs();
 
         ConfigEditsBuilder::new(&app.config.codex_home)
-            .with_edits([
-                app.plan_mode_override_edit("plan_mode_model", Some("gpt-5.2".to_string()))
-            ])
+            .with_edits([App::plan_mode_override_edit(
+                "plan_mode_model",
+                Some("gpt-5.2".to_string()),
+            )])
             .apply()
             .await
             .expect("persist root Plan mode model override");
@@ -1588,26 +1586,23 @@ enabled = false
         let mut app = make_test_app().await;
         let codex_home = tempdir()?;
         app.config.codex_home = codex_home.path().to_path_buf().abs();
-        app.active_profile = Some("work".to_string());
+        let profile_config = codex_home.path().join("work.config.toml").abs();
+        app.loader_overrides.user_config_path = Some(profile_config.clone());
+        app.loader_overrides.user_config_profile = Some("work".parse()?);
+        app.refresh_in_memory_config_from_disk().await?;
 
-        ConfigEditsBuilder::new(&app.config.codex_home)
-            .with_edits([
-                app.plan_mode_override_edit("plan_mode_model", Some("gpt-5.2".to_string()))
-            ])
+        ConfigEditsBuilder::for_config(&app.config)
+            .with_edits([App::plan_mode_override_edit(
+                "plan_mode_model",
+                Some("gpt-5.2".to_string()),
+            )])
             .apply()
             .await
             .expect("persist profile Plan mode model override");
 
-        let contents = std::fs::read_to_string(codex_home.path().join("config.toml"))?;
-        assert!(contents.contains("[profiles.work]"));
+        let contents = std::fs::read_to_string(&profile_config)?;
         assert!(contents.contains("plan_mode_model = \"gpt-5.2\""));
-        let parsed: TomlValue = toml::from_str(&contents)?;
-        assert!(
-            parsed
-                .as_table()
-                .and_then(|table| table.get("plan_mode_model"))
-                .is_none()
-        );
+        assert!(!codex_home.path().join("config.toml").exists());
         Ok(())
     }
 
@@ -1618,14 +1613,15 @@ enabled = false
         app.config.codex_home = codex_home.path().to_path_buf().abs();
 
         ConfigEditsBuilder::new(&app.config.codex_home)
-            .with_edits([
-                app.plan_mode_override_edit("plan_mode_model", Some("gpt-5.2".to_string()))
-            ])
+            .with_edits([App::plan_mode_override_edit(
+                "plan_mode_model",
+                Some("gpt-5.2".to_string()),
+            )])
             .apply()
             .await
             .expect("persist Plan mode model override");
         ConfigEditsBuilder::new(&app.config.codex_home)
-            .with_edits([app.plan_mode_override_edit("plan_mode_model", None)])
+            .with_edits([App::plan_mode_override_edit("plan_mode_model", None)])
             .apply()
             .await
             .expect("clear Plan mode model override");
@@ -1640,19 +1636,14 @@ enabled = false
         let mut app = make_test_app().await;
         let codex_home = tempdir()?;
         app.config.codex_home = codex_home.path().to_path_buf().abs();
-        app.active_profile = Some("work".to_string());
+        let profile_config = codex_home.path().join("work.config.toml").abs();
+        app.loader_overrides.user_config_path = Some(profile_config.clone());
+        app.loader_overrides.user_config_profile = Some("work".parse()?);
         std::fs::write(
             codex_home.path().join("config.toml"),
-            "plan_mode_model = \"gpt-root\"\nprofile = \"work\"\n",
+            "plan_mode_model = \"gpt-root\"\n",
         )?;
-
-        ConfigEditsBuilder::new(&app.config.codex_home)
-            .with_edits([
-                app.plan_mode_override_edit("plan_mode_model", Some("gpt-profile".to_string()))
-            ])
-            .apply()
-            .await
-            .expect("persist profile Plan mode model override");
+        std::fs::write(&profile_config, "plan_mode_model = \"gpt-profile\"\n")?;
 
         app.refresh_in_memory_config_from_disk().await?;
         assert_eq!(app.config.plan_mode_model.as_deref(), Some("gpt-profile"));

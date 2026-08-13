@@ -2129,12 +2129,11 @@ impl App {
                 }
             }
             AppEvent::PersistPlanModeReasoningEffort(effort) => {
-                let profile = self.active_profile.as_deref();
-                let edit = self.plan_mode_override_edit(
+                let edit = Self::plan_mode_override_edit(
                     "plan_mode_reasoning_effort",
                     effort.map(|effort| effort.to_string()),
                 );
-                if let Err(err) = ConfigEditsBuilder::new(&self.config.codex_home)
+                if let Err(err) = ConfigEditsBuilder::for_config(&self.config)
                     .with_edits([edit])
                     .apply()
                     .await
@@ -2149,22 +2148,15 @@ impl App {
                 }
             }
             AppEvent::PersistPlanModeModel(model) => {
-                let profile = self.active_profile.as_deref();
-                let edit = self.plan_mode_override_edit("plan_mode_model", model);
-                if let Err(err) = ConfigEditsBuilder::new(&self.config.codex_home)
+                let edit = Self::plan_mode_override_edit("plan_mode_model", model);
+                if let Err(err) = ConfigEditsBuilder::for_config(&self.config)
                     .with_edits([edit])
                     .apply()
                     .await
                 {
                     tracing::error!(error = %err, "failed to persist plan mode model");
-                    if let Some(profile) = profile {
-                        self.chat_widget.add_error_message(format!(
-                            "Failed to save Plan mode model for profile `{profile}`: {err}"
-                        ));
-                    } else {
-                        self.chat_widget
-                            .add_error_message(format!("Failed to save Plan mode model: {err}"));
-                    }
+                    self.chat_widget
+                        .add_error_message(format!("Failed to save Plan mode model: {err}"));
                 }
             }
             AppEvent::PersistModelMigrationPromptAcknowledged {
