@@ -528,6 +528,31 @@ async fn reasoning_selection_in_plan_mode_model_switch_opens_scope_prompt_event(
 }
 
 #[tokio::test]
+async fn plan_mode_scope_popup_same_model_snapshot() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5.4")).await;
+    chat.open_plan_reasoning_scope_prompt("gpt-5.4".to_string(), Some(ReasoningEffortConfig::High));
+
+    assert_chatwidget_snapshot!(
+        "plan_mode_scope_popup_same_model",
+        render_bottom_popup(&chat, /*width*/ 100)
+    );
+}
+
+#[tokio::test]
+async fn plan_mode_scope_popup_long_model_slug_snapshot() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5.4")).await;
+    chat.open_plan_reasoning_scope_prompt(
+        "gpt-5.4-long-plan-mode-model-slug".to_string(),
+        Some(ReasoningEffortConfig::High),
+    );
+
+    assert_chatwidget_snapshot!(
+        "plan_mode_scope_popup_long_model",
+        render_bottom_popup(&chat, /*width*/ 48)
+    );
+}
+
+#[tokio::test]
 async fn plan_reasoning_scope_popup_plan_only_persists_plan_override_only() {
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(Some("gpt-5.4")).await;
     chat.open_plan_reasoning_scope_prompt("gpt-5.2".to_string(), Some(ReasoningEffortConfig::High));
@@ -1018,6 +1043,7 @@ async fn submit_user_message_with_mode_applies_plan_mode_model_override() {
     let plan_mask = collaboration_modes::mask_for_kind(chat.model_catalog.as_ref(), ModeKind::Plan)
         .expect("expected plan collaboration mask");
     chat.submit_user_message_with_mode("Plan this.".to_string(), plan_mask);
+    assert_eq!(chat.current_model(), "gpt-5.2");
 
     match next_submit_op(&mut op_rx) {
         Op::UserTurn {
@@ -1034,6 +1060,47 @@ async fn submit_user_message_with_mode_applies_plan_mode_model_override() {
         other => {
             panic!("expected Op::UserTurn with plan model override, got {other:?}")
         }
+    }
+
+    let default_mask = collaboration_modes::default_mask(chat.model_catalog.as_ref())
+        .expect("expected default collaboration mask");
+    chat.set_collaboration_mask(default_mask);
+    assert_eq!(chat.current_model(), "gpt-5.4");
+}
+
+#[tokio::test]
+async fn restored_plan_mask_uses_configured_model_for_composer_submission() {
+    let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(Some("gpt-5.4")).await;
+    chat.thread_id = Some(ThreadId::new());
+    chat.set_feature_enabled(Feature::CollaborationModes, /*enabled*/ true);
+    chat.set_plan_mode_model(Some("gpt-5.2".to_string()));
+
+    let mut restored_mask = collaboration_modes::plan_mask(chat.model_catalog.as_ref())
+        .expect("expected plan collaboration mask");
+    restored_mask.model = Some("stale-plan-model".to_string());
+    chat.active_collaboration_mask = Some(restored_mask);
+    let input_state = chat
+        .capture_thread_input_state()
+        .expect("thread input state");
+    chat.active_collaboration_mask = None;
+
+    chat.restore_thread_input_state(Some(input_state));
+    assert_eq!(chat.current_model(), "gpt-5.2");
+
+    chat.bottom_pane
+        .set_composer_text("Create a plan.".to_string(), Vec::new(), Vec::new());
+    chat.handle_key_event(KeyEvent::from(KeyCode::Enter));
+
+    match next_submit_op(&mut op_rx) {
+        Op::UserTurn {
+            collaboration_mode:
+                Some(CollaborationMode {
+                    mode: ModeKind::Plan,
+                    settings,
+                }),
+            ..
+        } => assert_eq!(settings.model, "gpt-5.2"),
+        other => panic!("expected Op::UserTurn with restored plan override, got {other:?}"),
     }
 }
 
