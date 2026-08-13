@@ -154,10 +154,13 @@ def binary_path(root: Path) -> Path:
 def build_artifacts(root: Path, version: str) -> tuple[Path, Path, tempfile.TemporaryDirectory[str]]:
     if sys.platform != "darwin" or platform.machine() not in {"arm64", "aarch64"}:
         raise CommandFailed("publishing a fork release requires a macOS ARM64 host")
-    run(
-        ["cargo", "build", "--locked", "--release", "-p", "codex-cli", "--bin", "codex"],
-        cwd=root / "codex-rs",
+    run(["cargo", "build", "--release", "-p", "codex-cli", "--bin", "codex"], cwd=root / "codex-rs")
+    lockfile_changed = run(
+        ["git", "diff", "--quiet", "--", "codex-rs/Cargo.lock"], cwd=root, check=False
     )
+    if lockfile_changed.returncode:
+        run(["git", "restore", "--worktree", "--", "codex-rs/Cargo.lock"], cwd=root)
+    ensure_clean(root)
     binary = binary_path(root)
     if not binary.is_file():
         raise CommandFailed(f"built binary is missing: {binary}")
