@@ -14,9 +14,11 @@ from pathlib import Path
 
 
 FORK_REPOSITORY = "aaudin90/codex"
+FORK_BRANCH = "plan-mode-model-selection"
 UPSTREAM_REPOSITORY = "openai/codex"
 UPSTREAM_GIT_URL = "https://github.com/openai/codex.git"
 VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:-(?:alpha|beta)[A-Za-z0-9.-]*)?$")
+FORK_VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$")
 
 
 class CommandFailed(RuntimeError):
@@ -72,6 +74,12 @@ def workspace_version(root: Path) -> str:
 def ensure_clean(root: Path) -> None:
     if output(["git", "status", "--porcelain"], cwd=root):
         raise CommandFailed("worktree is dirty; commit or remove changes before releasing")
+
+
+def ensure_fork_branch(root: Path) -> None:
+    branch = output(["git", "branch", "--show-current"], cwd=root)
+    if branch != FORK_BRANCH:
+        raise CommandFailed(f"release must run on {FORK_BRANCH}, current branch is {branch or 'detached HEAD'}")
 
 
 def ensure_ancestor(ancestor: str, root: Path, label: str) -> None:
@@ -198,6 +206,10 @@ def release_notes(root: Path, upstream_tag: str, upstream_commit: str) -> str:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("version", help="Upstream version: X.Y.Z[-alpha…|-beta…]")
+    parser.add_argument(
+        "--fork-version",
+        help="Optional fork release version for fork-v<version>; defaults to the upstream version",
+    )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true", help="Validate only (default)")
     mode.add_argument("--publish", action="store_true", help="Create, push, and publish the release")
@@ -208,9 +220,13 @@ def main() -> int:
     args = parse_args()
     if not VERSION_PATTERN.fullmatch(args.version):
         raise CommandFailed("version must match X.Y.Z[-alpha…|-beta…]")
+    fork_version = args.fork_version or args.version
+    if not FORK_VERSION_PATTERN.fullmatch(fork_version):
+        raise CommandFailed("fork version must match X.Y.Z[-prerelease]")
     for tool in ("git", "gh", "cargo", "shasum"):
         require_tool(tool)
     root = repository_root()
+    ensure_fork_branch(root)
     if workspace_version(root) != args.version:
         raise CommandFailed(
             f"codex-rs/Cargo.toml version is {workspace_version(root)}, expected {args.version}; create the version bump first"
@@ -221,7 +237,7 @@ def main() -> int:
     upstream_commit = exact_upstream_commit(root, upstream_tag)
     ensure_upstream_object(root, upstream_tag, upstream_commit)
     ensure_ancestor(upstream_commit, root, f"upstream commit {upstream_commit}")
-    fork_tag = f"fork-v{args.version}"
+    fork_tag = f"fork-v{fork_version}"
     ensure_tag_and_release_absent(root, fork_tag)
     if not args.publish:
         print(f"dry run succeeded: {fork_tag} would be created at HEAD")
@@ -241,7 +257,7 @@ def main() -> int:
                 "--repo",
                 FORK_REPOSITORY,
                 "--title",
-                f"Codex fork {args.version}",
+                f"Codex fork {fork_version}",
                 "--notes",
                 release_notes(root, upstream_tag, upstream_commit),
             ],
