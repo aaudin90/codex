@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clean Rust Artifacts"
+  short_description: "Reclaim Rust build and cache disk space safely"
+  default_prompt: "Use $clean-rust-artifacts to report and safely remove Rust build artifacts and Cargo caches from this machine."
