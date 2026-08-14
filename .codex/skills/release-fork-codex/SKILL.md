@@ -5,7 +5,7 @@ description: Publish a macOS ARM64 release of the current Codex fork HEAD after 
 
 # Release Codex Fork
 
-Publish the current `plan-mode-model-selection` `HEAD` to `aaudin90/codex` as `fork-v<fork-version>`. The release includes downstream changes, including Plan mode, and is not the upstream release commit. Never check out, rebase, or push `main`.
+Publish the current `plan-mode-model-selection` `HEAD` to `aaudin90/codex` as `fork-v<fork-version>`. The release contains a canonical macOS ARM64 package with `codex`, `codex-code-mode-host`, `rg`, and the patched `zsh`, plus its SHA-256 file. It includes downstream changes, including Plan mode, and is not the upstream release commit. Never check out, rebase, or push `main`.
 
 ## Inputs and safety
 
@@ -30,7 +30,7 @@ The script uses only the Python standard library plus `git`, `gh`, `cargo`, `rus
 1. First invoke `$rebase-plan-mode` on `plan-mode-model-selection` after confirming `origin/main` has been synchronized with `openai/codex` main. Then move its feature-only commits to the exact upstream release commit. A fork release explicitly authorizes its guarded `git push --force-with-lease` for `plan-mode-model-selection` after a successful rebase.
 2. Run the release script in dry-run mode. It resolves the exact upstream tag commit through the GitHub API, obtains it transiently from the Git URL if necessary without adding an `upstream` remote, and requires that exact commit to be an ancestor of `HEAD`.
 3. Stop before publishing if the worktree is dirty, version or ancestry is wrong, GitHub authentication lacks push permission to `aaudin90/codex`, or the fork tag/release already exists. Do not bypass these checks.
-4. Run with `--publish`. If absent, it installs the channel and components from `codex-rs/rust-toolchain.toml` through `rustup`, then builds `codex-cli` with that pinned channel for the current macOS ARM64 host. It restores a build-generated `Cargo.lock` change after the clean precheck, verifies the upstream Cargo version in `codex --version`, creates an annotated `fork-v<fork-version>` tag at current `HEAD`, pushes that tag, then creates the GitHub release with the aarch64 macOS binary and SHA-256 file.
+4. Run with `--publish`. If absent, it installs the channel and components from `codex-rs/rust-toolchain.toml` through `rustup`, then builds the canonical package with that pinned channel for the current macOS ARM64 host. It restores a build-generated `Cargo.lock` change after the clean precheck, verifies the upstream Cargo version in the packaged `codex --version`, creates an annotated `fork-v<fork-version>` tag at current `HEAD`, pushes that tag, then creates the GitHub release with the package archive and SHA-256 file.
 5. Check the generated notes: upstream tag and exact commit, fork commit, and a bounded downstream log are required.
 
 Do not use the standard `rust-release` workflow: it targets `rust-v…`, requires upstream Cargo-version matching and release secrets, and produces a multi-platform upstream release. If publishing fails after the tag push, leave the tag in place and report the failure; do not delete it automatically.
