@@ -40,6 +40,6 @@ Cargo will redownload dependencies and rebuild affected projects afterward. Remo
 
 ## Toolchains are separate
 
-Do not remove `~/.rustup/toolchains` or `~/.cargo/bin` in normal cleanup: they are installed tools, not disposable build cache. If the user explicitly wants to uninstall every Rust toolchain, first report the exact size and explain that Cargo/Rust will need reinstalling. Only then use both `--include-toolchains` and `--confirm-toolchain-removal` with `--apply`.
+Do not remove `~/.rustup/toolchains` or `~/.cargo/bin` in normal cleanup: they are installed tools, not disposable build cache. If the user explicitly wants to uninstall every Rust toolchain, first report the exact size and explain that Cargo/Rust will need reinstalling. Only then use both `--include-toolchains` and `--confirm-toolchain-removal` with `--apply`. In this fork, `$release-fork-from-upstream` restores the pinned `codex-rs/rust-toolchain.toml` channel and components before a future release build; preserve `~/.cargo/bin` so `rustup` remains available.
 
 Never use `rm -rf` with an unresolved variable, a glob, a workspace root, or a home directory. Do not delete user-specified paths outside the script's reported candidates.
