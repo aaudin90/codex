@@ -5,13 +5,14 @@ description: Safely rebase the current non-main feature branch onto origin/main 
 
 # Rebase Plan Mode
 
-Safely move the current feature branch onto the latest `origin/main` or an explicitly selected upstream release commit. Preserve both Plan mode choices: model and reasoning effort.
+Safely move the current feature branch onto the latest `origin/main` or an explicitly selected upstream release commit. Preserve both Plan mode choices: model and reasoning effort. In the `aaudin90/codex` fork-release workflow, perform every action on `plan-mode-model-selection`; never check out, rebase, or push `main`.
 
 ## Preconditions
 
 1. Run `git status --short` and `git branch --show-current`.
 2. Stop if the worktree is not clean, the branch is detached, or it is `main`. Do not stash changes and never rebase or force-push `main`.
-3. By default, run `git fetch origin main` and use fetched `origin/main` as the rebase base. For a fork release explicitly targeting an upstream version, obtain its exact `rust-v<version>` commit without adding a permanent remote and use that commit instead.
+3. For the `aaudin90/codex` fork-release workflow, require the branch to be exactly `plan-mode-model-selection`; do not substitute another feature branch.
+4. By default, run `git fetch origin main` and use fetched `origin/main` as the rebase base. For a fork release explicitly targeting an upstream version, obtain its exact `rust-v<version>` commit without adding a permanent remote and use that commit instead.
 
 ## Rebase and resolve conflicts
 

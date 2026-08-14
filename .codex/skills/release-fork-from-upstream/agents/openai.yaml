@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Fork From Upstream"
+  short_description: "Rebase, release, then clean Rust artifacts"
+  default_prompt: "Use $release-fork-from-upstream to publish fork version X.Y.Z from its exact upstream Codex release commit and clean Rust artifacts afterward."
