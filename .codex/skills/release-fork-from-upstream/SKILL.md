@@ -53,13 +53,13 @@ After verification, update only `plan-mode-model-selection` with `git push --for
 
 ## 3. Publish a new fork release
 
-Invoke `$release-fork-codex` for the upstream version and optional fork version, first with `--dry-run`, then `--publish`. For example, use upstream `0.147.0` with fork version `0.147.0-test` to create `fork-v0.147.0-test`. It must verify the exact upstream commit is an ancestor, build macOS ARM64 `codex-cli`, create the annotated fork tag at current `HEAD`, upload the binary and SHA-256, and create the GitHub Release in `aaudin90/codex`.
+Invoke `$release-fork-codex` for the upstream version and optional fork version, first with `--dry-run`, then `--publish`. For example, use upstream `0.147.0` with fork version `0.147.0-test` to create `fork-v0.147.0-test`. It must verify the exact upstream commit is an ancestor, build the canonical macOS ARM64 package, create the annotated fork tag at current `HEAD`, upload the package archive and SHA-256, and create the GitHub Release in `aaudin90/codex`.
 
 If publishing fails at any point after pushing the tag, stop and report the tag and failure. A later invocation is not a continuation: it must refuse because the tag already exists.
 
 ## 4. Verify release, then clean Rust artifacts
 
-Verify that the GitHub Release is non-draft, has the expected tag and both assets. Do not clean before this succeeds.
+Verify that the GitHub Release is non-draft, has the expected tag, and contains `codex-package-aarch64-apple-darwin.tar.gz` plus its SHA-256 asset. Do not clean before this succeeds.
 
 Then invoke `$clean-rust-artifacts` from the repository root:
 
