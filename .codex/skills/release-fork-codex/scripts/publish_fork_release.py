@@ -187,23 +187,32 @@ def ensure_tag_and_release_absent(root: Path, fork_tag: str) -> None:
         raise CommandFailed(f"GitHub release already exists: {fork_tag}")
 
 
-def binary_path(root: Path, toolchain: str) -> Path:
-    metadata = json.loads(
-        output(
-            ["cargo", f"+{toolchain}", "metadata", "--no-deps", "--format-version", "1"],
-            cwd=root / "codex-rs",
-        )
-    )
-    return Path(metadata["target_directory"]) / "release" / "codex"
-
-
 def build_artifacts(root: Path, version: str) -> tuple[Path, Path, tempfile.TemporaryDirectory[str]]:
     if sys.platform != "darwin" or platform.machine() not in {"arm64", "aarch64"}:
         raise CommandFailed("publishing a fork release requires a macOS ARM64 host")
     toolchain = ensure_toolchain(root)
+    cargo = output(["rustup", "which", "--toolchain", toolchain, "cargo"], cwd=root)
+    artifacts = tempfile.TemporaryDirectory(prefix="codex-fork-release-")
+    artifacts_dir = Path(artifacts.name)
+    package_dir = artifacts_dir / "package"
+    artifact = artifacts_dir / "codex-package-aarch64-apple-darwin.tar.gz"
     run(
-        ["cargo", f"+{toolchain}", "build", "--release", "-p", "codex-cli", "--bin", "codex"],
-        cwd=root / "codex-rs",
+        [
+            sys.executable,
+            str(root / "scripts" / "build_codex_package.py"),
+            "--target",
+            "aarch64-apple-darwin",
+            "--cargo",
+            cargo,
+            "--cargo-profile",
+            "release",
+            "--package-dir",
+            str(package_dir),
+            "--archive-output",
+            str(artifact),
+        ],
+        cwd=root,
+        network=True,
     )
     lockfile_changed = run(
         ["git", "diff", "--quiet", "--", "codex-rs/Cargo.lock"], cwd=root, check=False
@@ -211,16 +220,13 @@ def build_artifacts(root: Path, version: str) -> tuple[Path, Path, tempfile.Temp
     if lockfile_changed.returncode:
         run(["git", "restore", "--worktree", "--", "codex-rs/Cargo.lock"], cwd=root)
     ensure_clean(root)
-    binary = binary_path(root, toolchain)
-    if not binary.is_file():
-        raise CommandFailed(f"built binary is missing: {binary}")
+    binary = package_dir / "bin" / "codex"
+    host = package_dir / "bin" / "codex-code-mode-host"
+    if not binary.is_file() or not host.is_file():
+        raise CommandFailed(f"built package is missing required binaries: {package_dir}")
     reported_version = output([str(binary), "--version"], cwd=root)
     if version not in reported_version:
         raise CommandFailed(f"codex --version did not contain expected version {version}: {reported_version}")
-    artifacts = tempfile.TemporaryDirectory(prefix="codex-fork-release-")
-    artifacts_dir = Path(artifacts.name)
-    artifact = artifacts_dir / "codex-aarch64-apple-darwin"
-    shutil.copy2(binary, artifact)
     checksum = artifacts_dir / f"{artifact.name}.sha256"
     checksum.write_text(
         output(["shasum", "-a", "256", artifact.name], cwd=artifacts_dir) + "\n",
