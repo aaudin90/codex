@@ -32,11 +32,14 @@ def run(
     cwd: Path | None = None,
     network: bool = False,
     check: bool = True,
+    env_overrides: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     print("+", " ".join(command))
     environment = os.environ.copy()
     if network:
         environment["NO_PROXY"] = "*"
+    if env_overrides:
+        environment.update(env_overrides)
     result = subprocess.run(command, cwd=cwd, env=environment, text=True, capture_output=True)
     if check and result.returncode:
         output = (result.stderr or result.stdout).strip()
@@ -192,33 +195,42 @@ def build_artifacts(root: Path, version: str) -> tuple[Path, Path, tempfile.Temp
         raise CommandFailed("publishing a fork release requires a macOS ARM64 host")
     toolchain = ensure_toolchain(root)
     cargo = output(["rustup", "which", "--toolchain", toolchain, "cargo"], cwd=root)
+    rustc = output(["rustup", "which", "--toolchain", toolchain, "rustc"], cwd=root)
+    rustdoc = output(["rustup", "which", "--toolchain", toolchain, "rustdoc"], cwd=root)
     artifacts = tempfile.TemporaryDirectory(prefix="codex-fork-release-")
     artifacts_dir = Path(artifacts.name)
     package_dir = artifacts_dir / "package"
     artifact = artifacts_dir / "codex-package-aarch64-apple-darwin.tar.gz"
-    run(
-        [
-            sys.executable,
-            str(root / "scripts" / "build_codex_package.py"),
-            "--target",
-            "aarch64-apple-darwin",
-            "--cargo",
-            cargo,
-            "--cargo-profile",
-            "release",
-            "--package-dir",
-            str(package_dir),
-            "--archive-output",
-            str(artifact),
-        ],
-        cwd=root,
-        network=True,
-    )
-    lockfile_changed = run(
-        ["git", "diff", "--quiet", "--", "codex-rs/Cargo.lock"], cwd=root, check=False
-    )
-    if lockfile_changed.returncode:
-        run(["git", "restore", "--worktree", "--", "codex-rs/Cargo.lock"], cwd=root)
+    try:
+        run(
+            [
+                sys.executable,
+                str(root / "scripts" / "build_codex_package.py"),
+                "--target",
+                "aarch64-apple-darwin",
+                "--cargo",
+                cargo,
+                "--cargo-profile",
+                "release",
+                "--package-dir",
+                str(package_dir),
+                "--archive-output",
+                str(artifact),
+            ],
+            cwd=root,
+            network=True,
+            env_overrides={
+                "RUSTC": rustc,
+                "RUSTDOC": rustdoc,
+                "RUSTUP_TOOLCHAIN": toolchain,
+            },
+        )
+    finally:
+        lockfile_changed = run(
+            ["git", "diff", "--quiet", "--", "codex-rs/Cargo.lock"], cwd=root, check=False
+        )
+        if lockfile_changed.returncode:
+            run(["git", "restore", "--worktree", "--", "codex-rs/Cargo.lock"], cwd=root)
     ensure_clean(root)
     binary = package_dir / "bin" / "codex"
     host = package_dir / "bin" / "codex-code-mode-host"
