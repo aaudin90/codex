@@ -42,6 +42,13 @@ git rebase --onto <upstream-release-commit> origin/main
 
 Resolve every conflict semantically, retaining both model and reasoning-effort Plan mode overrides. Do not use whole-file `--ours` or `--theirs`. Then run its required `just fmt`, `just test -p codex-tui`, and pending-Insta review. Treat unavailable `uv`/`dotslash` as formatter infrastructure failures, not passing formatting.
 
+Before those Rust checks, install the channel and components pinned in `codex-rs/rust-toolchain.toml` if cleanup removed them:
+
+```bash
+NO_PROXY="*" rustup toolchain install <channel-from-rust-toolchain.toml> --profile minimal --no-self-update
+NO_PROXY="*" rustup component add <components-from-rust-toolchain.toml> --toolchain <channel-from-rust-toolchain.toml>
+```
+
 After verification, update only `plan-mode-model-selection` with `git push --force-with-lease`; this meta-skill is explicit authorization for that push and never for `main`.
 
 ## 3. Publish a new fork release
@@ -61,7 +68,7 @@ python3 .codex/skills/clean-rust-artifacts/scripts/clean_rust_artifacts.py --wor
 python3 .codex/skills/clean-rust-artifacts/scripts/clean_rust_artifacts.py --workspace codex-rs --scope all --apply
 ```
 
-This meta-skill's explicit cleanup request authorizes the second command after the dry-run report. Wait for all Cargo/Rust processes first. Never add `--include-toolchains`: preserve installed toolchains and `~/.cargo/bin`.
+This meta-skill's explicit cleanup request authorizes the second command after the dry-run report. If the user has explicitly opted into removing installed toolchains, add `--include-toolchains --confirm-toolchain-removal` to the report and apply commands; the next release restores the pinned channel automatically. Wait for all Cargo/Rust processes first. Never remove `~/.cargo/bin`.
 
 ## Completion report
 

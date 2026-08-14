@@ -1,6 +1,8 @@
 # Fork releases
 
-When asked to create a fresh fork release from an `openai/codex` version, use `$release-fork-from-upstream` rather than running the release steps manually. It operates only on `plan-mode-model-selection`: verifies that `origin/main` has already been synchronized with upstream, rebases the working branch first onto that updated main and then onto the exact `rust-v<version>` commit, preserves Plan mode model and reasoning-effort overrides, publishes the new `fork-v<version>` release, and removes disposable Rust build artifacts only after release verification. Never check out, rebase, or push `main`; stop instead if its remote copy is not synchronized or a tag/release already exists.
+When asked to create a fresh fork release from an `openai/codex` version, use `$release-fork-from-upstream` rather than running the release steps manually. It operates only on `plan-mode-model-selection`: verifies that `origin/main` has already been synchronized with upstream, rebases the working branch first onto that updated main and then onto the exact `rust-v<version>` commit, preserves Plan mode model and reasoning-effort overrides, publishes the new `fork-v<version>` release, and removes disposable Rust build artifacts only after release verification. It restores the pinned Rust channel and components from `codex-rs/rust-toolchain.toml` before building when they were cleaned. Never check out, rebase, or push `main`; stop instead if its remote copy is not synchronized or a tag/release already exists.
+
+When asked to install the forked CLI for use, invoke `$install-fork-codex`. It downloads a verified macOS ARM64 binary only from `aaudin90/codex` Releases; never use `openai/codex` release assets or package-manager installation for this fork.
 
 # Rust/codex-rs
 
