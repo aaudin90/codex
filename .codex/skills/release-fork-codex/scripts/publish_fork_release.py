@@ -220,6 +220,7 @@ def build_artifacts(root: Path, version: str) -> tuple[Path, Path, tempfile.Temp
             cwd=root,
             network=True,
             env_overrides={
+                "CARGO_TARGET_DIR": str(artifacts_dir / "target"),
                 "RUSTC": rustc,
                 "RUSTDOC": rustdoc,
                 "RUSTUP_TOOLCHAIN": toolchain,
