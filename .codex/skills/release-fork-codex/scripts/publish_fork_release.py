@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 from pathlib import Path
 
 
@@ -69,6 +70,40 @@ def workspace_version(root: Path) -> str:
             if match:
                 return match.group(1)
     raise CommandFailed(f"could not read [workspace.package].version from {manifest}")
+
+
+def workspace_toolchain(root: Path) -> tuple[str, list[str]]:
+    config_path = root / "codex-rs" / "rust-toolchain.toml"
+    try:
+        toolchain = tomllib.loads(config_path.read_text(encoding="utf-8"))["toolchain"]
+        channel = toolchain["channel"]
+        components = toolchain.get("components", [])
+    except (KeyError, tomllib.TOMLDecodeError) as error:
+        raise CommandFailed(f"could not read [toolchain] from {config_path}: {error}") from error
+    if not isinstance(channel, str) or not all(isinstance(component, str) for component in components):
+        raise CommandFailed(f"invalid toolchain configuration in {config_path}")
+    return channel, components
+
+
+def ensure_toolchain(root: Path) -> str:
+    channel, components = workspace_toolchain(root)
+    installed = {
+        line.split()[0]
+        for line in output(["rustup", "toolchain", "list"], cwd=root).splitlines()
+    }
+    if not any(name == channel or name.startswith(f"{channel}-") for name in installed):
+        run(
+            ["rustup", "toolchain", "install", channel, "--profile", "minimal", "--no-self-update"],
+            cwd=root,
+            network=True,
+        )
+    if components:
+        run(
+            ["rustup", "component", "add", *components, "--toolchain", channel],
+            cwd=root,
+            network=True,
+        )
+    return channel
 
 
 def ensure_clean(root: Path) -> None:
@@ -152,9 +187,12 @@ def ensure_tag_and_release_absent(root: Path, fork_tag: str) -> None:
         raise CommandFailed(f"GitHub release already exists: {fork_tag}")
 
 
-def binary_path(root: Path) -> Path:
+def binary_path(root: Path, toolchain: str) -> Path:
     metadata = json.loads(
-        output(["cargo", "metadata", "--no-deps", "--format-version", "1"], cwd=root / "codex-rs")
+        output(
+            ["cargo", f"+{toolchain}", "metadata", "--no-deps", "--format-version", "1"],
+            cwd=root / "codex-rs",
+        )
     )
     return Path(metadata["target_directory"]) / "release" / "codex"
 
@@ -162,14 +200,18 @@ def binary_path(root: Path) -> Path:
 def build_artifacts(root: Path, version: str) -> tuple[Path, Path, tempfile.TemporaryDirectory[str]]:
     if sys.platform != "darwin" or platform.machine() not in {"arm64", "aarch64"}:
         raise CommandFailed("publishing a fork release requires a macOS ARM64 host")
-    run(["cargo", "build", "--release", "-p", "codex-cli", "--bin", "codex"], cwd=root / "codex-rs")
+    toolchain = ensure_toolchain(root)
+    run(
+        ["cargo", f"+{toolchain}", "build", "--release", "-p", "codex-cli", "--bin", "codex"],
+        cwd=root / "codex-rs",
+    )
     lockfile_changed = run(
         ["git", "diff", "--quiet", "--", "codex-rs/Cargo.lock"], cwd=root, check=False
     )
     if lockfile_changed.returncode:
         run(["git", "restore", "--worktree", "--", "codex-rs/Cargo.lock"], cwd=root)
     ensure_clean(root)
-    binary = binary_path(root)
+    binary = binary_path(root, toolchain)
     if not binary.is_file():
         raise CommandFailed(f"built binary is missing: {binary}")
     reported_version = output([str(binary), "--version"], cwd=root)
@@ -223,7 +265,7 @@ def main() -> int:
     fork_version = args.fork_version or args.version
     if not FORK_VERSION_PATTERN.fullmatch(fork_version):
         raise CommandFailed("fork version must match X.Y.Z[-prerelease]")
-    for tool in ("git", "gh", "cargo", "shasum"):
+    for tool in ("git", "gh", "cargo", "rustup", "shasum"):
         require_tool(tool)
     root = repository_root()
     ensure_fork_branch(root)
