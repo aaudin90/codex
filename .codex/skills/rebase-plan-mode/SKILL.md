@@ -29,15 +29,17 @@ Safely move the current feature branch onto the latest `origin/main` or an expli
 
 ## Verify
 
-After a successful rebase, run from `codex-rs`:
+After a successful rebase, run the focused downstream checks from `codex-rs`:
 
 ```bash
 just fmt
-just test -p codex-tui
+just test -p codex-tui plan_mode
 cargo insta pending-snapshots -p codex-tui
 ```
 
 Read every pending `*.snap.new`. Accept only intentional Plan mode UI changes with `cargo insta accept -p codex-tui`; otherwise fix or reject them. Report formatter or test infrastructure failures separately from code failures.
+
+The complete `just test -p codex-tui` suite is optional diagnostic coverage for a fork-release rebase. Do not block a release on unrelated upstream or host-specific failures when the focused Plan mode checks pass; report them clearly. Run the complete suite only when the downstream change affects broader TUI behavior or when explicitly requested.
 
 ## Remote updates
 

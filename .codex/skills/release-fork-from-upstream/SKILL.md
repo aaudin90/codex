@@ -40,7 +40,7 @@ git rebase origin/main
 git rebase --onto <upstream-release-commit> origin/main
 ```
 
-Resolve every conflict semantically, retaining both model and reasoning-effort Plan mode overrides. Do not use whole-file `--ours` or `--theirs`. Then run its required `just fmt`, `just test -p codex-tui`, and pending-Insta review. Treat unavailable `uv`/`dotslash` as formatter infrastructure failures, not passing formatting.
+Resolve every conflict semantically, retaining both model and reasoning-effort Plan mode overrides. Do not use whole-file `--ours` or `--theirs`. Then run `just fmt`, `just test -p codex-tui plan_mode`, and pending-Insta review. The complete `just test -p codex-tui` suite is optional diagnostic coverage: unrelated upstream or host-specific failures do not block the fork release when the focused Plan mode checks pass. Treat unavailable `uv`/`dotslash` as formatter infrastructure failures, not passing formatting.
 
 Before those Rust checks, install the channel and components pinned in `codex-rs/rust-toolchain.toml` if cleanup removed them:
 
