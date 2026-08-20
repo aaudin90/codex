@@ -68,7 +68,7 @@ python3 .codex/skills/clean-rust-artifacts/scripts/clean_rust_artifacts.py --wor
 python3 .codex/skills/clean-rust-artifacts/scripts/clean_rust_artifacts.py --workspace codex-rs --scope all --apply
 ```
 
-This meta-skill's explicit cleanup request authorizes the second command after the dry-run report. If the user has explicitly opted into removing installed toolchains, add `--include-toolchains --confirm-toolchain-removal` to the report and apply commands; the next release restores the pinned channel automatically. Wait for all Cargo/Rust processes first. Never remove `~/.cargo/bin`.
+This meta-skill's explicit cleanup request authorizes the second command after the dry-run report. The verified fork-release cleanup also removes installed toolchains: add `--include-toolchains --confirm-toolchain-removal` to both report and apply commands; the next release restores the pinned channel automatically. Wait for all Cargo/Rust processes first. Never remove `~/.cargo/bin`.
 
 ## Completion report
 
