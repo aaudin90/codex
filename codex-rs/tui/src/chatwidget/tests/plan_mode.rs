@@ -623,7 +623,7 @@ async fn plan_reasoning_scope_popup_all_modes_persists_global_and_plan_overrides
     assert!(
         events.iter().any(|event| matches!(
             event,
-            AppEvent::UpdateModel(model) if model == "gpt-5.6-terra"
+            AppEvent::UpdateModel(model) if model == "gpt-5.2"
         )),
         "expected global model update; events: {events:?}"
     );
@@ -677,7 +677,7 @@ async fn plan_reasoning_scope_popup_all_modes_persists_global_and_plan_override(
     assert!(
         events.iter().any(|event| matches!(
             event,
-            AppEvent::UpdateModel(model) if model == "gpt-5.5"
+            AppEvent::UpdateModel(model) if model == "gpt-5.4"
         )),
         "expected global model update; events: {events:?}"
     );

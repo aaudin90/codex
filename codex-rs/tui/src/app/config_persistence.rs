@@ -5,7 +5,6 @@
 //! loop.
 
 use super::*;
-use crate::legacy_core::config::edit::ConfigEdit;
 use codex_config::ConfigLayerSource;
 #[cfg(target_os = "windows")]
 use codex_utils_approval_presets::ApprovalPreset;
@@ -87,17 +86,6 @@ pub(super) fn has_explicit_resume_permission_override(
 }
 
 impl App {
-    pub(super) fn plan_mode_override_edit(key: &str, value: Option<String>) -> ConfigEdit {
-        let segments = vec![key.to_string()];
-        match value {
-            Some(value) => ConfigEdit::SetPath {
-                segments,
-                value: value.into(),
-            },
-            None => ConfigEdit::ClearPath { segments },
-        }
-    }
-
     pub(super) async fn rebuild_config_for_cwd(&self, cwd: PathBuf) -> Result<Config> {
         let mut overrides = self.harness_overrides.clone();
         overrides.cwd = Some(cwd.clone());
@@ -1434,6 +1422,17 @@ mod tests {
     use pretty_assertions::assert_eq;
     use tempfile::tempdir;
 
+    fn plan_mode_override_edit(key: &str, value: Option<String>) -> ConfigEdit {
+        let segments = vec![key.to_string()];
+        match value {
+            Some(value) => ConfigEdit::SetPath {
+                segments,
+                value: value.into(),
+            },
+            None => ConfigEdit::ClearPath { segments },
+        }
+    }
+
     #[tokio::test]
     async fn update_reasoning_effort_updates_collaboration_mode() {
         let mut app = make_test_app().await;
@@ -1801,7 +1800,7 @@ enabled = false
         app.config.codex_home = codex_home.path().to_path_buf().abs();
 
         ConfigEditsBuilder::new(&app.config.codex_home)
-            .with_edits([App::plan_mode_override_edit(
+            .with_edits([plan_mode_override_edit(
                 "plan_mode_model",
                 Some("gpt-5.2".to_string()),
             )])
@@ -1828,7 +1827,7 @@ enabled = false
         app.refresh_in_memory_config_from_disk().await?;
 
         ConfigEditsBuilder::for_config(&app.config)
-            .with_edits([App::plan_mode_override_edit(
+            .with_edits([plan_mode_override_edit(
                 "plan_mode_model",
                 Some("gpt-5.2".to_string()),
             )])
@@ -1849,7 +1848,7 @@ enabled = false
         app.config.codex_home = codex_home.path().to_path_buf().abs();
 
         ConfigEditsBuilder::new(&app.config.codex_home)
-            .with_edits([App::plan_mode_override_edit(
+            .with_edits([plan_mode_override_edit(
                 "plan_mode_model",
                 Some("gpt-5.2".to_string()),
             )])
@@ -1857,7 +1856,7 @@ enabled = false
             .await
             .expect("persist Plan mode model override");
         ConfigEditsBuilder::new(&app.config.codex_home)
-            .with_edits([App::plan_mode_override_edit("plan_mode_model", None)])
+            .with_edits([plan_mode_override_edit("plan_mode_model", None)])
             .apply()
             .await
             .expect("clear Plan mode model override");

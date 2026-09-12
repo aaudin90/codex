@@ -1661,11 +1661,6 @@ impl App {
                 self.sync_active_thread_plan_mode_reasoning_setting(app_server)
                     .await;
             }
-            AppEvent::UpdatePersonality(personality) => {
-                self.on_update_personality(personality);
-                self.sync_active_thread_personality_setting(app_server, personality)
-                    .await;
-            }
             AppEvent::SettingsSelectionClosed => {
                 self.app_event_tx.send(AppEvent::SettingsSelectionSettled);
             }
@@ -2608,9 +2603,14 @@ impl App {
                 }
             }
             AppEvent::PersistPlanModeReasoningEffort(effort) => {
-                let edit = self.plan_mode_override_edit(
-                    "plan_mode_reasoning_effort",
-                    effort.map(|effort| effort.to_string()),
+                let edit = effort.map_or_else(
+                    || crate::config_update::clear_config_value("plan_mode_reasoning_effort"),
+                    |effort| {
+                        crate::config_update::replace_config_value(
+                            "plan_mode_reasoning_effort",
+                            serde_json::json!(effort.to_string()),
+                        )
+                    },
                 );
                 if let Err(err) = self.persist_model_defaults(
                     app_server.request_handle(),
@@ -2629,7 +2629,15 @@ impl App {
                 }
             }
             AppEvent::PersistPlanModeModel(model) => {
-                let edit = self.plan_mode_override_edit("plan_mode_model", model);
+                let edit = model.map_or_else(
+                    || crate::config_update::clear_config_value("plan_mode_model"),
+                    |model| {
+                        crate::config_update::replace_config_value(
+                            "plan_mode_model",
+                            serde_json::json!(model),
+                        )
+                    },
+                );
                 if let Err(err) = self
                     .persist_model_defaults(
                         app_server.request_handle(),

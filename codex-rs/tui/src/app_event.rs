@@ -1056,9 +1056,6 @@ pub(crate) enum AppEvent {
     /// Update the Plan-mode model override in the running app and widget.
     UpdatePlanModeModel(Option<String>),
 
-    /// Update the current personality in the running app and widget.
-    UpdatePersonality(Personality),
-
     /// Finish a settings selection after its preceding update events have been applied.
     SettingsSelectionClosed,
     /// Run after any nested settings events emitted while handling the close event.
