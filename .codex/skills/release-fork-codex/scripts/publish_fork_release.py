@@ -292,6 +292,7 @@ def build_artifacts(
             cwd=root,
             network=True,
             env_overrides={
+                "CODEX_REPO_ROOT": str(root),
                 "CARGO_TARGET_DIR": str(artifacts_dir / "target"),
                 "RUSTC": rustc,
                 "RUSTDOC": rustdoc,
