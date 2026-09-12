@@ -22,10 +22,23 @@ class Candidate:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--workspace", type=Path, default=Path.cwd(), help="Rust workspace for project artifacts")
-    parser.add_argument("--scope", choices=SCOPES, default="all", help="Artifacts to inspect")
-    parser.add_argument("--apply", action="store_true", help="Remove reported candidates")
-    parser.add_argument("--include-toolchains", action="store_true", help="Also report rustup toolchains")
+    parser.add_argument(
+        "--workspace",
+        type=Path,
+        default=Path.cwd(),
+        help="Rust workspace for project artifacts",
+    )
+    parser.add_argument(
+        "--scope", choices=SCOPES, default="all", help="Artifacts to inspect"
+    )
+    parser.add_argument(
+        "--apply", action="store_true", help="Remove reported candidates"
+    )
+    parser.add_argument(
+        "--include-toolchains",
+        action="store_true",
+        help="Also report rustup toolchains",
+    )
     parser.add_argument(
         "--confirm-toolchain-removal",
         action="store_true",
@@ -38,7 +51,9 @@ def command_output(command: list[str], cwd: Path) -> str:
     result = subprocess.run(command, cwd=cwd, text=True, capture_output=True)
     if result.returncode:
         message = (result.stderr or result.stdout).strip()
-        raise RuntimeError(f"{' '.join(command)} failed{': ' + message if message else ''}")
+        raise RuntimeError(
+            f"{' '.join(command)} failed{': ' + message if message else ''}"
+        )
     return result.stdout
 
 
@@ -52,7 +67,9 @@ def rustup_home() -> Path:
 
 def project_target_directory(workspace: Path) -> Path:
     metadata = json.loads(
-        command_output(["cargo", "metadata", "--no-deps", "--format-version", "1"], workspace)
+        command_output(
+            ["cargo", "metadata", "--no-deps", "--format-version", "1"], workspace
+        )
     )
     return Path(metadata["target_directory"])
 
@@ -66,7 +83,11 @@ def candidates(args: argparse.Namespace) -> list[Candidate]:
     rustup = rustup_home()
     result: list[Candidate] = []
     if requested(args.scope, "project"):
-        result.append(Candidate("project build artifacts", project_target_directory(args.workspace)))
+        result.append(
+            Candidate(
+                "project build artifacts", project_target_directory(args.workspace)
+            )
+        )
     if requested(args.scope, "cargo-cache"):
         for relative_path in (
             "registry/cache",
@@ -83,7 +104,12 @@ def candidates(args: argparse.Namespace) -> list[Candidate]:
     if requested(args.scope, "sccache"):
         configured = os.environ.get("SCCACHE_DIR")
         locations = [Path(configured)] if configured else []
-        locations.extend((Path.home() / ".cache" / "sccache", Path.home() / "Library" / "Caches" / "sccache"))
+        locations.extend(
+            (
+                Path.home() / ".cache" / "sccache",
+                Path.home() / "Library" / "Caches" / "sccache",
+            )
+        )
         result.extend(Candidate("sccache", location) for location in locations)
     if args.include_toolchains:
         result.append(Candidate("installed rustup toolchains", rustup / "toolchains"))
@@ -131,13 +157,17 @@ def ensure_safe_to_delete(candidate: Candidate) -> None:
     if candidate.path in protected or candidate.path.parent == home:
         raise RuntimeError(f"refusing to remove protected directory: {candidate.path}")
     if candidate.path.is_symlink() or not candidate.path.is_dir():
-        raise RuntimeError(f"refusing to remove non-directory or symlink: {candidate.path}")
+        raise RuntimeError(
+            f"refusing to remove non-directory or symlink: {candidate.path}"
+        )
 
 
 def main() -> int:
     args = parse_args()
     if args.apply and args.include_toolchains and not args.confirm_toolchain_removal:
-        raise RuntimeError("--apply --include-toolchains requires --confirm-toolchain-removal")
+        raise RuntimeError(
+            "--apply --include-toolchains requires --confirm-toolchain-removal"
+        )
     if args.apply and not args.include_toolchains and args.confirm_toolchain_removal:
         raise RuntimeError("--confirm-toolchain-removal requires --include-toolchains")
     workspace = args.workspace.expanduser().resolve()

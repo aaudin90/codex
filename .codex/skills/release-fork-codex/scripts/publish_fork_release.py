@@ -19,7 +19,9 @@ FORK_BRANCH = "plan-mode-model-selection"
 UPSTREAM_REPOSITORY = "openai/codex"
 UPSTREAM_GIT_URL = "https://github.com/openai/codex.git"
 VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:-(?:alpha|beta)[A-Za-z0-9.-]*)?$")
-FORK_VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$")
+FORK_VERSION_PATTERN = re.compile(
+    r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$"
+)
 
 
 class CommandFailed(RuntimeError):
@@ -40,10 +42,14 @@ def run(
         environment["NO_PROXY"] = "*"
     if env_overrides:
         environment.update(env_overrides)
-    result = subprocess.run(command, cwd=cwd, env=environment, text=True, capture_output=True)
+    result = subprocess.run(
+        command, cwd=cwd, env=environment, text=True, capture_output=True
+    )
     if check and result.returncode:
         output = (result.stderr or result.stdout).strip()
-        raise CommandFailed(f"{' '.join(command)} failed{': ' + output if output else ''}")
+        raise CommandFailed(
+            f"{' '.join(command)} failed{': ' + output if output else ''}"
+        )
     return result
 
 
@@ -82,8 +88,12 @@ def workspace_toolchain(root: Path) -> tuple[str, list[str]]:
         channel = toolchain["channel"]
         components = toolchain.get("components", [])
     except (KeyError, tomllib.TOMLDecodeError) as error:
-        raise CommandFailed(f"could not read [toolchain] from {config_path}: {error}") from error
-    if not isinstance(channel, str) or not all(isinstance(component, str) for component in components):
+        raise CommandFailed(
+            f"could not read [toolchain] from {config_path}: {error}"
+        ) from error
+    if not isinstance(channel, str) or not all(
+        isinstance(component, str) for component in components
+    ):
         raise CommandFailed(f"invalid toolchain configuration in {config_path}")
     return channel, components
 
@@ -96,7 +106,15 @@ def ensure_toolchain(root: Path) -> str:
     }
     if not any(name == channel or name.startswith(f"{channel}-") for name in installed):
         run(
-            ["rustup", "toolchain", "install", channel, "--profile", "minimal", "--no-self-update"],
+            [
+                "rustup",
+                "toolchain",
+                "install",
+                channel,
+                "--profile",
+                "minimal",
+                "--no-self-update",
+            ],
             cwd=root,
             network=True,
         )
@@ -111,17 +129,23 @@ def ensure_toolchain(root: Path) -> str:
 
 def ensure_clean(root: Path) -> None:
     if output(["git", "status", "--porcelain"], cwd=root):
-        raise CommandFailed("worktree is dirty; commit or remove changes before releasing")
+        raise CommandFailed(
+            "worktree is dirty; commit or remove changes before releasing"
+        )
 
 
 def ensure_fork_branch(root: Path) -> None:
     branch = output(["git", "branch", "--show-current"], cwd=root)
     if branch != FORK_BRANCH:
-        raise CommandFailed(f"release must run on {FORK_BRANCH}, current branch is {branch or 'detached HEAD'}")
+        raise CommandFailed(
+            f"release must run on {FORK_BRANCH}, current branch is {branch or 'detached HEAD'}"
+        )
 
 
 def ensure_ancestor(ancestor: str, root: Path, label: str) -> None:
-    result = run(["git", "merge-base", "--is-ancestor", ancestor, "HEAD"], cwd=root, check=False)
+    result = run(
+        ["git", "merge-base", "--is-ancestor", ancestor, "HEAD"], cwd=root, check=False
+    )
     if result.returncode:
         raise CommandFailed(f"{label} is not an ancestor of current HEAD")
 
@@ -129,7 +153,13 @@ def ensure_ancestor(ancestor: str, root: Path, label: str) -> None:
 def exact_upstream_commit(root: Path, upstream_tag: str) -> str:
     ref = json.loads(
         output(
-            ["gh", "api", "--method", "GET", f"repos/{UPSTREAM_REPOSITORY}/git/ref/tags/{upstream_tag}"],
+            [
+                "gh",
+                "api",
+                "--method",
+                "GET",
+                f"repos/{UPSTREAM_REPOSITORY}/git/ref/tags/{upstream_tag}",
+            ],
             cwd=root,
             network=True,
         )
@@ -139,7 +169,13 @@ def exact_upstream_commit(root: Path, upstream_tag: str) -> str:
     while object_type == "tag":
         tag = json.loads(
             output(
-                ["gh", "api", "--method", "GET", f"repos/{UPSTREAM_REPOSITORY}/git/tags/{object_sha}"],
+                [
+                    "gh",
+                    "api",
+                    "--method",
+                    "GET",
+                    f"repos/{UPSTREAM_REPOSITORY}/git/tags/{object_sha}",
+                ],
                 cwd=root,
                 network=True,
             )
@@ -152,45 +188,81 @@ def exact_upstream_commit(root: Path, upstream_tag: str) -> str:
 
 
 def ensure_upstream_object(root: Path, upstream_tag: str, commit: str) -> None:
-    exists = run(["git", "cat-file", "-e", f"{commit}^{{commit}}"], cwd=root, check=False)
+    exists = run(
+        ["git", "cat-file", "-e", f"{commit}^{{commit}}"], cwd=root, check=False
+    )
     if exists.returncode:
         run(
-            ["git", "fetch", "--no-tags", UPSTREAM_GIT_URL, f"refs/tags/{upstream_tag}"],
+            [
+                "git",
+                "fetch",
+                "--no-tags",
+                UPSTREAM_GIT_URL,
+                f"refs/tags/{upstream_tag}",
+            ],
             cwd=root,
             network=True,
         )
-    fetched = run(["git", "cat-file", "-e", f"{commit}^{{commit}}"], cwd=root, check=False)
+    fetched = run(
+        ["git", "cat-file", "-e", f"{commit}^{{commit}}"], cwd=root, check=False
+    )
     if fetched.returncode:
-        raise CommandFailed(f"could not obtain exact upstream commit {commit} from {upstream_tag}")
+        raise CommandFailed(
+            f"could not obtain exact upstream commit {commit} from {upstream_tag}"
+        )
 
 
 def ensure_github_access(root: Path) -> None:
     run(["gh", "auth", "status"], cwd=root, network=True)
     repository = json.loads(
-        output(["gh", "api", "--method", "GET", f"repos/{FORK_REPOSITORY}"], cwd=root, network=True)
+        output(
+            ["gh", "api", "--method", "GET", f"repos/{FORK_REPOSITORY}"],
+            cwd=root,
+            network=True,
+        )
     )
     if not repository.get("permissions", {}).get("push"):
-        raise CommandFailed(f"authenticated GitHub user lacks push permission to {FORK_REPOSITORY}")
+        raise CommandFailed(
+            f"authenticated GitHub user lacks push permission to {FORK_REPOSITORY}"
+        )
 
 
 def ensure_tag_and_release_absent(root: Path, fork_tag: str) -> None:
-    local_tag = run(["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{fork_tag}"], cwd=root, check=False)
+    local_tag = run(
+        ["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{fork_tag}"],
+        cwd=root,
+        check=False,
+    )
     if local_tag.returncode == 0:
         raise CommandFailed(f"local tag already exists: {fork_tag}")
     remote_tag = run(
-        ["git", "ls-remote", "--exit-code", "--tags", "origin", f"refs/tags/{fork_tag}"],
+        [
+            "git",
+            "ls-remote",
+            "--exit-code",
+            "--tags",
+            "origin",
+            f"refs/tags/{fork_tag}",
+        ],
         cwd=root,
         network=True,
         check=False,
     )
     if remote_tag.returncode == 0:
         raise CommandFailed(f"remote tag already exists: {fork_tag}")
-    release = run(["gh", "release", "view", fork_tag, "--repo", FORK_REPOSITORY], cwd=root, network=True, check=False)
+    release = run(
+        ["gh", "release", "view", fork_tag, "--repo", FORK_REPOSITORY],
+        cwd=root,
+        network=True,
+        check=False,
+    )
     if release.returncode == 0:
         raise CommandFailed(f"GitHub release already exists: {fork_tag}")
 
 
-def build_artifacts(root: Path, version: str) -> tuple[Path, Path, tempfile.TemporaryDirectory[str]]:
+def build_artifacts(
+    root: Path, version: str
+) -> tuple[Path, Path, tempfile.TemporaryDirectory[str]]:
     if sys.platform != "darwin" or platform.machine() not in {"arm64", "aarch64"}:
         raise CommandFailed("publishing a fork release requires a macOS ARM64 host")
     toolchain = ensure_toolchain(root)
@@ -228,7 +300,9 @@ def build_artifacts(root: Path, version: str) -> tuple[Path, Path, tempfile.Temp
         )
     finally:
         lockfile_changed = run(
-            ["git", "diff", "--quiet", "--", "codex-rs/Cargo.lock"], cwd=root, check=False
+            ["git", "diff", "--quiet", "--", "codex-rs/Cargo.lock"],
+            cwd=root,
+            check=False,
         )
         if lockfile_changed.returncode:
             run(["git", "restore", "--worktree", "--", "codex-rs/Cargo.lock"], cwd=root)
@@ -236,10 +310,14 @@ def build_artifacts(root: Path, version: str) -> tuple[Path, Path, tempfile.Temp
     binary = package_dir / "bin" / "codex"
     host = package_dir / "bin" / "codex-code-mode-host"
     if not binary.is_file() or not host.is_file():
-        raise CommandFailed(f"built package is missing required binaries: {package_dir}")
+        raise CommandFailed(
+            f"built package is missing required binaries: {package_dir}"
+        )
     reported_version = output([str(binary), "--version"], cwd=root)
     if version not in reported_version:
-        raise CommandFailed(f"codex --version did not contain expected version {version}: {reported_version}")
+        raise CommandFailed(
+            f"codex --version did not contain expected version {version}: {reported_version}"
+        )
     checksum = artifacts_dir / f"{artifact.name}.sha256"
     checksum.write_text(
         output(["shasum", "-a", "256", artifact.name], cwd=artifacts_dir) + "\n",
@@ -251,7 +329,8 @@ def build_artifacts(root: Path, version: str) -> tuple[Path, Path, tempfile.Temp
 def release_notes(root: Path, upstream_tag: str, upstream_commit: str) -> str:
     fork_commit = output(["git", "rev-parse", "HEAD"], cwd=root)
     downstream_log = output(
-        ["git", "log", "--oneline", "--max-count", "50", f"{upstream_commit}..HEAD"], cwd=root
+        ["git", "log", "--oneline", "--max-count", "50", f"{upstream_commit}..HEAD"],
+        cwd=root,
     )
     return "\n".join(
         [
@@ -273,7 +352,9 @@ def parse_args() -> argparse.Namespace:
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true", help="Validate only (default)")
-    mode.add_argument("--publish", action="store_true", help="Create, push, and publish the release")
+    mode.add_argument(
+        "--publish", action="store_true", help="Create, push, and publish the release"
+    )
     return parser.parse_args()
 
 
@@ -305,7 +386,10 @@ def main() -> int:
         return 0
     artifact, checksum, artifacts = build_artifacts(root, args.version)
     try:
-        run(["git", "tag", "-a", fork_tag, "HEAD", "-m", f"Fork release {fork_tag}"], cwd=root)
+        run(
+            ["git", "tag", "-a", fork_tag, "HEAD", "-m", f"Fork release {fork_tag}"],
+            cwd=root,
+        )
         run(["git", "push", "origin", fork_tag], cwd=root, network=True)
         run(
             [

@@ -32,7 +32,9 @@ def gh_api(path: str) -> dict[str, object]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("version", help="Upstream version: X.Y.Z[-alpha…|-beta…]")
-    parser.add_argument("--json", action="store_true", help="Print tag and commit as JSON")
+    parser.add_argument(
+        "--json", action="store_true", help="Print tag and commit as JSON"
+    )
     return parser.parse_args()
 
 
