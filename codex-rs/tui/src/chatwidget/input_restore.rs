@@ -601,6 +601,11 @@ impl ChatWidget {
             self.current_collaboration_mode = input_state.current_collaboration_mode;
             self.active_collaboration_mask = input_state.active_collaboration_mask;
             self.config.plan_mode_reasoning_effort = input_state.plan_mode_reasoning_effort;
+            let plan_mode_model = self.config.plan_mode_model.clone();
+            let plan_mode_effort = self.config.plan_mode_reasoning_effort.clone();
+            if let Some(mask) = self.active_collaboration_mask.as_mut() {
+                Self::apply_plan_mode_overrides(mask, plan_mode_model.as_deref(), plan_mode_effort);
+            }
             self.safety_buffering_prompt = input_state.safety_buffering_prompt;
             self.safety_buffering_source = input_state.safety_buffering_source;
             self.turn_lifecycle.restore_running(

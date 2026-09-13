@@ -349,7 +349,6 @@ impl ChatWidget {
         if !self.collaboration_modes_enabled()
             || selected_model == LUNA_RESERVE_MODEL
             || self.active_mode_kind() != ModeKind::Plan
-            || selected_model != self.current_model()
         {
             return false;
         }
@@ -357,7 +356,8 @@ impl ChatWidget {
         // Prompt whenever the selection is not a true no-op for both:
         // 1) the active Plan-mode effective reasoning, and
         // 2) the stored global defaults that would be updated by the fallback path.
-        selected_effort != self.effective_reasoning_effort()
+        selected_model != self.current_model()
+            || selected_effort != self.effective_reasoning_effort()
             || selected_model != self.current_collaboration_mode.model()
             || selected_effort != self.current_collaboration_mode.reasoning_effort()
     }
@@ -377,7 +377,12 @@ impl ChatWidget {
             }
             None => "the selected reasoning".to_string(),
         };
-        let plan_only_description = format!("Always use {reasoning_phrase} in Plan mode.");
+        let model_changed = model != self.current_model();
+        let plan_only_description = if model_changed {
+            format!("Always use {model} with {reasoning_phrase} in Plan mode.")
+        } else {
+            format!("Always use {reasoning_phrase} in Plan mode.")
+        };
         let plan_reasoning_source = if let Some(plan_override) =
             self.config.plan_mode_reasoning_effort.as_ref()
         {
@@ -415,10 +420,10 @@ impl ChatWidget {
             let effort = effort.clone();
             let warning = warning.clone();
             move |tx| {
-                tx.send(
-                    AstraModelPickerAction::UpdateModel
-                        .into_picker_event(sparkle_thread, model.clone()),
-                );
+                if model_changed {
+                    tx.send(AppEvent::UpdatePlanModeModel(Some(model.clone())));
+                    tx.send(AppEvent::PersistPlanModeModel(Some(model.clone())));
+                }
                 tx.send(AppEvent::UpdatePlanModeReasoningEffort(effort.clone()));
                 tx.send(AppEvent::PersistPlanModeReasoningEffort(effort.clone()));
                 if let Some(warning) = warning.clone() {
@@ -434,6 +439,10 @@ impl ChatWidget {
                     .into_picker_event(sparkle_thread, model.clone()),
             );
             tx.send(AppEvent::UpdateReasoningEffort(effort.clone()));
+            if model_changed {
+                tx.send(AppEvent::UpdatePlanModeModel(Some(model.clone())));
+                tx.send(AppEvent::PersistPlanModeModel(Some(model.clone())));
+            }
             tx.send(AppEvent::UpdatePlanModeReasoningEffort(effort.clone()));
             tx.send(AppEvent::PersistPlanModeReasoningEffort(effort.clone()));
             tx.send(AppEvent::PersistModelSelection {
