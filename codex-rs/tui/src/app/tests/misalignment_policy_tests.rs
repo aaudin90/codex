@@ -36,6 +36,61 @@ fn error_notification(
 }
 
 #[tokio::test]
+async fn configured_open_agents_key_respects_misalignment_policy_guard() -> Result<()> {
+    let (mut app, mut app_events, _) = make_test_app_with_channels().await;
+    let (mut server, _, _) = start_recording_app_server(
+        &app.config,
+        /*blocked_thread_list*/ None,
+        /*failed_thread_name*/ None,
+    )
+    .await?;
+    let session = server.start_thread(&app.config).await?.session;
+    let thread_id = session.thread_id;
+    app.active_thread_id = Some(thread_id);
+    app.chat_widget.handle_thread_session(session);
+    app.chat_widget.handle_server_notification(
+        error_notification(thread_id, "failed-turn", policy_error()),
+        /*replay_kind*/ None,
+    );
+    assert!(app.chat_widget.has_misalignment_policy_violation());
+    app.keymap.app.open_agents = vec![crate::key_hint::alt(KeyCode::Char('a'))];
+    while app_events.try_recv().is_ok() {}
+    let mut tui = crate::tui::test_support::make_test_tui()?;
+    let view_before = app.chat_widget.has_active_view();
+    let popup_before = render_bottom_popup(&app.chat_widget, /*width*/ 80);
+    let input_before = app.chat_widget.capture_thread_input_state();
+
+    app.handle_tui_event(
+        &mut tui,
+        &mut server,
+        TuiEvent::Key(KeyEvent::new(KeyCode::Char('a'), KeyModifiers::ALT)),
+    )
+    .await?;
+
+    assert!(app.chat_widget.has_misalignment_policy_violation());
+    assert_eq!(app.chat_widget.has_active_view(), view_before);
+    assert_eq!(
+        render_bottom_popup(&app.chat_widget, /*width*/ 80),
+        popup_before
+    );
+    assert_eq!(app.chat_widget.capture_thread_input_state(), input_before);
+    assert!(app_events.try_recv().is_err());
+
+    app.handle_event(&mut tui, &mut server, AppEvent::OpenAgentPicker)
+        .await?;
+    assert!(app.chat_widget.has_misalignment_policy_violation());
+    assert_eq!(app.chat_widget.has_active_view(), view_before);
+    assert_eq!(
+        render_bottom_popup(&app.chat_widget, /*width*/ 80),
+        popup_before
+    );
+    assert_eq!(app.chat_widget.capture_thread_input_state(), input_before);
+    assert!(app_events.try_recv().is_err());
+    server.shutdown().await?;
+    Ok(())
+}
+
+#[tokio::test]
 async fn misalignment_continuation_requires_current_review_and_submits_once() -> Result<()> {
     for (reject, preserve) in [(false, false), (false, true), (true, false)] {
         let (mut app, mut rx, _) = make_test_app_with_channels().await;

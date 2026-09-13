@@ -680,7 +680,7 @@ impl App {
         }
 
         if self.keymap.app.open_agents.is_pressed(key_event) {
-            self.open_agents_overview(app_server);
+            self.app_event_tx.send(AppEvent::OpenAgentPicker);
             return true;
         }
 

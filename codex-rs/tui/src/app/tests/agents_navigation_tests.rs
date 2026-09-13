@@ -2,6 +2,57 @@ use super::*;
 use pretty_assertions::assert_eq;
 
 #[tokio::test]
+async fn configured_open_agents_key_opens_subagents_picker_and_preserves_draft() -> Result<()> {
+    for (keymap_config, keys) in [
+        (
+            "[global]\nopen_agents = [\"alt-a\"]",
+            vec![KeyEvent::new(KeyCode::Char('a'), KeyModifiers::ALT)],
+        ),
+        (
+            "[global]\nopen_agents = [\"ctrl-x a\"]",
+            vec![
+                KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL),
+                KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE),
+            ],
+        ),
+    ] {
+        let (mut app, mut app_events, _op_rx) = make_test_app_with_channels().await;
+        app.config.features.disable(Feature::Collab)?;
+        let config = toml::from_str(keymap_config)?;
+        app.keymap =
+            crate::keymap::RuntimeKeymap::from_config(&config).expect("valid subagent shortcuts");
+        app.chat_widget.apply_keymap_update(config, &app.keymap);
+        app.chat_widget
+            .restore_user_message_to_composer("keep this draft".into());
+        let input_before = app.chat_widget.capture_thread_input_state();
+        let mut tui = crate::tui::test_support::make_test_tui()?;
+        let mut app_server = crate::start_embedded_app_server_for_picker(&app.config).await?;
+
+        for key in keys {
+            app.handle_tui_event(&mut tui, &mut app_server, TuiEvent::Key(key))
+                .await?;
+        }
+
+        let event = app_events.try_recv()?;
+        assert_matches!(event, AppEvent::OpenAgentPicker);
+        app.handle_event(&mut tui, &mut app_server, event).await?;
+        assert!(app.chat_widget.has_active_view());
+        assert_eq!(app.chat_widget.capture_thread_input_state(), input_before);
+        assert!(render_bottom_popup(&app.chat_widget, /*width*/ 80).contains("Enable subagents?"));
+        app.handle_tui_event(
+            &mut tui,
+            &mut app_server,
+            TuiEvent::Key(KeyCode::Esc.into()),
+        )
+        .await?;
+        assert!(!app.chat_widget.has_active_view());
+        assert_eq!(app.chat_widget.capture_thread_input_state(), input_before);
+        app_server.shutdown().await?;
+    }
+    Ok(())
+}
+
+#[tokio::test]
 async fn agents_navigation_requires_local_daemon() -> Result<()> {
     let (mut app, mut events, _op_rx) = make_test_app_with_channels().await;
     let mut tui = crate::tui::test_support::make_test_tui()?;

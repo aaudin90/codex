@@ -84,7 +84,7 @@ impl KeymapActionDescriptor {
 
 #[rustfmt::skip]
 pub(super) const KEYMAP_ACTIONS: &[KeymapActionDescriptor] = &[
-    action("global", "Global", "open_agents", "Open the shared agent-session overview."),
+    action("global", "Global", "open_agents", "Open this session's subagents picker."),
     action("global", "Global", "open_transcript", "Open the transcript overlay."),
     action("global", "Global", "find_transcript", "Find text in the full transcript."),
     // Keep the new warnings action out of shared-config writes until older strict readers
