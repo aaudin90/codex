@@ -1872,6 +1872,8 @@ async fn replay_thread_snapshot_restores_collaboration_mode_without_input() {
     let session = test_thread_session(thread_id, test_path_buf("/tmp/project"));
     app.chat_widget.handle_thread_session(session.clone());
     app.chat_widget
+        .set_plan_mode_model(Some("gpt-restored".to_string()));
+    app.chat_widget
         .set_reasoning_effort(Some(ReasoningEffortConfig::High));
     app.chat_widget
         .set_collaboration_mask(CollaborationModeMask {
@@ -1893,6 +1895,8 @@ async fn replay_thread_snapshot_restores_collaboration_mode_without_input() {
     app.chat_widget
         .set_plan_mode_reasoning_effort(Some(ReasoningEffortConfig::Low));
     app.chat_widget.handle_thread_session(session.clone());
+    app.chat_widget
+        .set_plan_mode_model(Some("gpt-restored".to_string()));
     app.chat_widget
         .set_reasoning_effort(Some(ReasoningEffortConfig::Low));
     app.chat_widget
