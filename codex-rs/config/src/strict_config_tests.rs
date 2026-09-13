@@ -154,6 +154,54 @@ collapsed = true"#;
     assert_eq!(error, None);
 }
 
+#[test]
+fn strict_config_accepts_plan_mode_overrides_and_rejects_typos() {
+    let path = Path::new("/tmp/config.toml");
+    let supported_settings = r#"
+plan_mode_model = "gpt-5.2"
+plan_mode_reasoning_effort = "high"
+
+[profiles.work]
+plan_mode_model = "gpt-5.2-codex"
+plan_mode_reasoning_effort = "medium"
+"#;
+
+    assert_eq!(
+        config_error_from_ignored_toml_fields::<ConfigToml>(path, supported_settings),
+        None
+    );
+    let config = ConfigLayerStack::new(
+        vec![layer(ConfigLayerSource::SessionFlags, supported_settings)],
+        ConfigRequirements::default(),
+        ConfigRequirementsToml::default(),
+    )
+    .unwrap();
+    assert_eq!(ignored_config_warning(&config, &[]), None);
+
+    for (contents, unknown_path) in [
+        ("plan_mode_modell = \"gpt-5.2\"", "plan_mode_modell"),
+        (
+            "plan_mode_reasoning_efforr = \"high\"",
+            "plan_mode_reasoning_efforr",
+        ),
+        (
+            "[profiles.work]\nplan_mode_modell = \"gpt-5.2\"",
+            "profiles.work.plan_mode_modell",
+        ),
+        (
+            "[profiles.work]\nplan_mode_reasoning_efforr = \"high\"",
+            "profiles.work.plan_mode_reasoning_efforr",
+        ),
+    ] {
+        let error = config_error_from_ignored_toml_fields::<ConfigToml>(path, contents)
+            .expect("misspelled Plan mode setting should be rejected");
+        assert_eq!(
+            error.message,
+            format!("unknown configuration field `{unknown_path}`")
+        );
+    }
+}
+
 fn layer(source: ConfigLayerSource, contents: &str) -> ConfigLayerEntry {
     ConfigLayerEntry::new(source, toml::from_str(contents).unwrap())
 }
