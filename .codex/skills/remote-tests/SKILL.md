@@ -104,3 +104,5 @@ You can list devboxes via `applied_devbox ls`, pick the one with `codex` in the 
 Connect to devbox via `ssh <devbox_name>`.
 Reuse the same checkout of codex in `~/code/codex`. Reset files if needed. Multiple checkouts take longer to build and take up more space.
 Check whether the SHA and modified files are in sync between remote and local.
+
+When work touches Plan mode, model configuration, thread restoration, or downstream history, read the [durable Plan mode contract](../../plan-mode-model-selection.md). Preserve its text across rebases and releases; adapt implementation and checks to it. Change the contract only when the user explicitly requests a behavior change.

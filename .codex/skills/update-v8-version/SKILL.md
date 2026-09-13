@@ -70,3 +70,5 @@ Enter this path only when the canary or local build path fails.
 - Distinguish "version bump complete" from "release published".
 - When blocked, report the upstream delta that matters, the Codex file it hits,
   and the next concrete fix to try.
+
+When work touches Plan mode, model configuration, thread restoration, or downstream history, read the [durable Plan mode contract](../../plan-mode-model-selection.md). Preserve its text across rebases and releases; adapt implementation and checks to it. Change the contract only when the user explicitly requests a behavior change.

@@ -41,3 +41,5 @@ thing for real users.
 
 Migrating to URIs should not add significant new failure modes. We will need to surface errors in
 some places that were previously infallible but it should be kept to a minimum.
+
+When work touches Plan mode, model configuration, thread restoration, or downstream history, read the [durable Plan mode contract](../../plan-mode-model-selection.md). Preserve its text across rebases and releases; adapt implementation and checks to it. Change the contract only when the user explicitly requests a behavior change.

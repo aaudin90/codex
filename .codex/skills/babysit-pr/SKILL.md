@@ -221,3 +221,5 @@ Provide concise progress updates while monitoring and a final summary that inclu
 
 - Heuristics and decision tree: `.codex/skills/babysit-pr/references/heuristics.md`
 - GitHub CLI/API details used by the watcher: `.codex/skills/babysit-pr/references/github-api-notes.md`
+
+When work touches Plan mode, model configuration, thread restoration, or downstream history, read the [durable Plan mode contract](../../plan-mode-model-selection.md). Preserve its text across rebases and releases; adapt implementation and checks to it. Change the contract only when the user explicitly requests a behavior change.

@@ -59,3 +59,5 @@ o  fdd0cd1de9  Today at 20:09  origin/main
 - `@` indicates the current commit is `cb032b31cf`
 - it is a development branch containing a single commit branched off of `origin/main`
 - it is associated with GitHub pull request #11412
+
+When work touches Plan mode, model configuration, thread restoration, or downstream history, read the [durable Plan mode contract](../../plan-mode-model-selection.md). Preserve its text across rebases and releases; adapt implementation and checks to it. Change the contract only when the user explicitly requests a behavior change.
