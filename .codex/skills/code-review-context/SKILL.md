@@ -11,3 +11,5 @@ Codex maintains a context (history of messages) that is sent to the model in inf
 4. No items larger than 10K tokens.
 5. Highlight new individual items that can cross >1k tokens as P0. These need an additional manual review.
 6. All injected fragments must be defined as structs in `core/context` and implement ContextualUserFragment trait
+
+When work touches Plan mode, model configuration, thread restoration, keybindings, subagent menus, or downstream history, read the [durable fork behavior contract](../../plan-mode-model-selection.md). Preserve its text across rebases and releases; adapt implementation and checks to it. Change the contract only when the user explicitly requests a behavior change.

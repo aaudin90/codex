@@ -12,3 +12,5 @@ Each finding must include a specific file path and line number.
 
 If the GitHub user running the review is the owner of the pull request add a `code-reviewed` label.
 Do not leave GitHub comments unless explicitly asked.
+
+When work touches Plan mode, model configuration, thread restoration, keybindings, subagent menus, or downstream history, read the [durable fork behavior contract](../../plan-mode-model-selection.md). Preserve its text across rebases and releases; adapt implementation and checks to it. Change the contract only when the user explicitly requests a behavior change.
