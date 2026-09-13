@@ -1000,6 +1000,11 @@ impl App {
         }
     }
 
+    pub(super) fn on_update_plan_mode_model(&mut self, model: Option<String>) {
+        self.config.plan_mode_model = model.clone();
+        self.chat_widget.set_plan_mode_model(model);
+    }
+
     pub(super) fn on_apply_advanced_reasoning(
         &mut self,
         model: &str,
@@ -1417,6 +1422,17 @@ mod tests {
     use pretty_assertions::assert_eq;
     use tempfile::tempdir;
 
+    fn plan_mode_override_edit(key: &str, value: Option<String>) -> ConfigEdit {
+        let segments = vec![key.to_string()];
+        match value {
+            Some(value) => ConfigEdit::SetPath {
+                segments,
+                value: value.into(),
+            },
+            None => ConfigEdit::ClearPath { segments },
+        }
+    }
+
     #[tokio::test]
     async fn update_reasoning_effort_updates_collaboration_mode() {
         let mut app = make_test_app().await;
@@ -1774,6 +1790,98 @@ enabled = false
             Some(false)
         );
         assert_cloud_requirements(&app);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn plan_mode_model_persistence_writes_root_override_and_reloads() -> Result<()> {
+        let mut app = make_test_app().await;
+        let codex_home = tempdir()?;
+        app.config.codex_home = codex_home.path().to_path_buf().abs();
+
+        ConfigEditsBuilder::new(&app.config.codex_home)
+            .with_edits([plan_mode_override_edit(
+                "plan_mode_model",
+                Some("gpt-5.2".to_string()),
+            )])
+            .apply()
+            .await
+            .expect("persist root Plan mode model override");
+
+        let contents = std::fs::read_to_string(codex_home.path().join("config.toml"))?;
+        assert!(contents.contains("plan_mode_model = \"gpt-5.2\""));
+
+        app.refresh_in_memory_config_from_disk().await?;
+        assert_eq!(app.config.plan_mode_model.as_deref(), Some("gpt-5.2"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn plan_mode_model_persistence_writes_only_active_profile() -> Result<()> {
+        let mut app = make_test_app().await;
+        let codex_home = tempdir()?;
+        app.config.codex_home = codex_home.path().to_path_buf().abs();
+        let profile_config = codex_home.path().join("work.config.toml").abs();
+        app.loader_overrides.user_config_path = Some(profile_config.clone());
+        app.loader_overrides.user_config_profile = Some("work".parse()?);
+        app.refresh_in_memory_config_from_disk().await?;
+
+        ConfigEditsBuilder::for_config(&app.config)
+            .with_edits([plan_mode_override_edit(
+                "plan_mode_model",
+                Some("gpt-5.2".to_string()),
+            )])
+            .apply()
+            .await
+            .expect("persist profile Plan mode model override");
+
+        let contents = std::fs::read_to_string(&profile_config)?;
+        assert!(contents.contains("plan_mode_model = \"gpt-5.2\""));
+        assert!(!codex_home.path().join("config.toml").exists());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn plan_mode_model_persistence_clears_override() -> Result<()> {
+        let mut app = make_test_app().await;
+        let codex_home = tempdir()?;
+        app.config.codex_home = codex_home.path().to_path_buf().abs();
+
+        ConfigEditsBuilder::new(&app.config.codex_home)
+            .with_edits([plan_mode_override_edit(
+                "plan_mode_model",
+                Some("gpt-5.2".to_string()),
+            )])
+            .apply()
+            .await
+            .expect("persist Plan mode model override");
+        ConfigEditsBuilder::new(&app.config.codex_home)
+            .with_edits([plan_mode_override_edit("plan_mode_model", None)])
+            .apply()
+            .await
+            .expect("clear Plan mode model override");
+
+        let contents = std::fs::read_to_string(codex_home.path().join("config.toml"))?;
+        assert!(!contents.contains("plan_mode_model"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn plan_mode_model_profile_override_wins_after_reload() -> Result<()> {
+        let mut app = make_test_app().await;
+        let codex_home = tempdir()?;
+        app.config.codex_home = codex_home.path().to_path_buf().abs();
+        let profile_config = codex_home.path().join("work.config.toml").abs();
+        app.loader_overrides.user_config_path = Some(profile_config.clone());
+        app.loader_overrides.user_config_profile = Some("work".parse()?);
+        std::fs::write(
+            codex_home.path().join("config.toml"),
+            "plan_mode_model = \"gpt-root\"\n",
+        )?;
+        std::fs::write(&profile_config, "plan_mode_model = \"gpt-profile\"\n")?;
+
+        app.refresh_in_memory_config_from_disk().await?;
+        assert_eq!(app.config.plan_mode_model.as_deref(), Some("gpt-profile"));
         Ok(())
     }
 
